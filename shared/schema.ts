@@ -16,25 +16,32 @@ export const channels = pgTable("channels", {
   name: text("name").notNull(),
   handle: text("handle").notNull(),
   channelId: text("channel_id").notNull(),
-  totalVideos: integer("total_videos").default(0),
-  processedVideos: integer("processed_videos").default(0),
+  totalVideos: integer("total_videos").default(0).notNull(),
+  processedVideos: integer("processed_videos").default(0).notNull(),
   status: text("status").notNull().default("pending"), // pending, processing, completed, error
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  subscriberCount: text("subscriber_count"),
+  lastSyncAt: timestamp("last_sync_at"),
 });
 
 export const videos = pgTable("videos", {
   id: serial("id").primaryKey(),
   videoId: text("video_id").notNull().unique(),
-  channelId: integer("channel_id").references(() => channels.id),
+  channelId: integer("channel_id").references(() => channels.id).notNull(),
   title: text("title").notNull(),
+  description: text("description"),
   publishedAt: timestamp("published_at"),
-  hasCommented: boolean("has_commented").default(false),
-  hasLiked: boolean("has_liked").default(false),
+  hasCommented: boolean("has_commented").default(false).notNull(),
+  hasLiked: boolean("has_liked").default(false).notNull(),
   commentText: text("comment_text"),
   commentedAt: timestamp("commented_at"),
-  status: text("status").default("pending"), // pending, processing, completed, error
+  status: text("status").default("pending").notNull(), // pending, processing, completed, error
   errorMessage: text("error_message"),
+  thumbnailUrl: text("thumbnail_url"),
+  duration: text("duration"),
+  viewCount: text("view_count"),
 });
 
 export const automationSettings = pgTable("automation_settings", {
