@@ -186,9 +186,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const channelId = parseInt(req.params.id);
       const videos = await storage.getVideosByChannelId(channelId);
-      res.json(videos);
+      
+      // Enhance videos with engagement status if user is authenticated
+      if (req.user.youtubeChannelId) {
+        const enhancedVideos = await Promise.all(
+          videos.map(async (video) => {
+            try {
+              const engagement = await youtubeService.checkUserEngagement(
+                video.videoId, 
+                req.user.youtubeChannelId
+              );
+              return {
+                ...video,
+                userHasCommented: engagement.hasCommented,
+                userHasLiked: engagement.hasLiked,
+                userComment: engagement.comment,
+              };
+            } catch (error) {
+              return video;
+            }
+          })
+        );
+        res.json(enhancedVideos);
+      } else {
+        res.json(videos);
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch videos" });
+    }
+  });
+
+  app.post("/api/channels/:id/analyze", requireAuth, requireYouTubeAuth, async (req: AuthRequest, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      youtubeService.setCredentials(req.user.youtubeToken, req.user.youtubeRefreshToken);
+      
+      const channel = await storage.getChannel(channelId);
+      if (!channel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+
+      // Get all videos for the channel
+      const videos = await storage.getVideosByChannelId(channelId);
+      
+      // Filter videos that need action (comment or like)
+      const videosNeedingAction = [];
+      
+      for (const video of videos) {
+        const engagement = await youtubeService.checkUserEngagement(
+          video.videoId,
+          req.user.youtubeChannelId
+        );
+        
+        const needsComment = !engagement.hasCommented;
+        const needsLike = !engagement.hasLiked;
+        
+        if (needsComment || needsLike) {
+          videosNeedingAction.push({
+            ...video,
+            needsComment,
+            needsLike,
+            userHasCommented: engagement.hasCommented,
+            userHasLiked: engagement.hasLiked,
+          });
+        }
+      }
+
+      res.json({
+        totalVideos: videos.length,
+        videosNeedingAction: videosNeedingAction.length,
+        videosNeedingComment: videosNeedingAction.filter(v => v.needsComment).length,
+        videosNeedingLike: videosNeedingAction.filter(v => v.needsLike).length,
+        videos: videosNeedingAction,
+      });
+    } catch (error) {
+      console.error("Channel analysis error:", error);
+      res.status(500).json({ error: "Failed to analyze channel" });
     }
   });
 

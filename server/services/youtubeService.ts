@@ -178,11 +178,63 @@ export class YouTubeService {
     }
   }
 
+  async getChannelInfo(channelId: string) {
+    try {
+      const response = await youtube.channels.list({
+        key: this.apiKey,
+        part: ['snippet', 'statistics'],
+        id: [channelId],
+      });
+
+      if (!response.data.items || response.data.items.length === 0) {
+        return null;
+      }
+
+      const channel = response.data.items[0];
+      return {
+        id: channel.id,
+        title: channel.snippet?.title,
+        description: channel.snippet?.description,
+        thumbnailUrl: channel.snippet?.thumbnails?.default?.url,
+        subscriberCount: channel.statistics?.subscriberCount,
+        videoCount: channel.statistics?.videoCount,
+        viewCount: channel.statistics?.viewCount,
+      };
+    } catch (error) {
+      console.error('Error getting channel info:', error);
+      return null;
+    }
+  }
+
+  async checkUserEngagement(videoId: string, userChannelId: string): Promise<{
+    hasCommented: boolean;
+    hasLiked: boolean;
+    comment?: YouTubeComment;
+  }> {
+    try {
+      // Check for existing comment
+      const comment = await this.getUserCommentOnVideo(videoId, userChannelId);
+      
+      // Check if video is liked (this requires OAuth scope that might not be available)
+      // For now, we'll return false for hasLiked as checking likes requires special permissions
+      const hasLiked = false;
+
+      return {
+        hasCommented: !!comment,
+        hasLiked: hasLiked,
+        comment: comment || undefined,
+      };
+    } catch (error) {
+      console.error('Error checking user engagement:', error);
+      return { hasCommented: false, hasLiked: false };
+    }
+  }
+
   async getVideoDetails(videoId: string) {
     try {
       const response = await youtube.videos.list({
         key: this.apiKey,
-        part: ['snippet', 'statistics'],
+        part: ['snippet', 'statistics', 'contentDetails'],
         id: [videoId],
       });
 
@@ -198,6 +250,8 @@ export class YouTubeService {
         publishedAt: video.snippet?.publishedAt,
         channelId: video.snippet?.channelId,
         channelTitle: video.snippet?.channelTitle,
+        thumbnailUrl: video.snippet?.thumbnails?.medium?.url,
+        duration: video.contentDetails?.duration,
         viewCount: video.statistics?.viewCount,
         likeCount: video.statistics?.likeCount,
         commentCount: video.statistics?.commentCount,

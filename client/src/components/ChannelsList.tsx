@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, Tv, ChevronRight } from "lucide-react";
+import { RefreshCw, Tv, ChevronRight, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import AddChannelDialog from "./AddChannelDialog";
 
 export default function ChannelsList() {
   const { toast } = useToast();
@@ -34,6 +35,23 @@ export default function ChannelsList() {
       toast({
         title: "Sync Failed",
         description: error instanceof Error ? error.message : "Failed to sync channel",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteChannel = async (channelId: number) => {
+    try {
+      await apiRequest("DELETE", `/api/channels/${channelId}`);
+      await refetch();
+      toast({
+        title: "Channel Removed",
+        description: "Channel has been removed from automation.",
+      });
+    } catch (error) {
+      toast({
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "Failed to delete channel",
         variant: "destructive",
       });
     }
