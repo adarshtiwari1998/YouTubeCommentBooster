@@ -1,0 +1,212 @@
+import { google } from 'googleapis';
+
+const youtube = google.youtube('v3');
+
+export interface YouTubeVideo {
+  id: string;
+  title: string;
+  publishedAt: string;
+  channelId: string;
+}
+
+export interface YouTubeComment {
+  id: string;
+  textDisplay: string;
+  authorDisplayName: string;
+  publishedAt: string;
+}
+
+export class YouTubeService {
+  private apiKey: string;
+  private oauth2Client: any;
+
+  constructor() {
+    this.apiKey = process.env.YOUTUBE_API_KEY || process.env.GOOGLE_API_KEY || '';
+    
+    this.oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID || process.env.OAUTH_CLIENT_ID || '',
+      process.env.GOOGLE_CLIENT_SECRET || process.env.OAUTH_CLIENT_SECRET || '',
+      process.env.GOOGLE_REDIRECT_URI || process.env.OAUTH_REDIRECT_URI || 'http://localhost:5000/api/auth/callback'
+    );
+  }
+
+  setCredentials(accessToken: string, refreshToken: string) {
+    this.oauth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+  }
+
+  getAuthUrl(): string {
+    const scopes = [
+      'https://www.googleapis.com/auth/youtube.readonly',
+      'https://www.googleapis.com/auth/youtube.force-ssl'
+    ];
+    
+    return this.oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: scopes,
+      prompt: 'consent'
+    });
+  }
+
+  async getTokenFromCode(code: string) {
+    const { tokens } = await this.oauth2Client.getToken(code);
+    return tokens;
+  }
+
+  async getChannelIdFromHandle(handle: string): Promise<string | null> {
+    try {
+      // Remove @ symbol if present
+      const cleanHandle = handle.replace('@', '');
+      
+      const response = await youtube.search.list({
+        key: this.apiKey,
+        part: ['snippet'],
+        q: cleanHandle,
+        type: ['channel'],
+        maxResults: 1,
+      });
+
+      if (response.data.items && response.data.items.length > 0) {
+        return response.data.items[0].snippet?.channelId || null;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting channel ID from handle:', error);
+      return null;
+    }
+  }
+
+  async getChannelVideos(channelId: string, maxResults = 50): Promise<YouTubeVideo[]> {
+    try {
+      const response = await youtube.search.list({
+        key: this.apiKey,
+        part: ['snippet'],
+        channelId: channelId,
+        type: ['video'],
+        order: 'date',
+        maxResults: maxResults,
+      });
+
+      if (!response.data.items) {
+        return [];
+      }
+
+      return response.data.items.map(item => ({
+        id: item.id?.videoId || '',
+        title: item.snippet?.title || '',
+        publishedAt: item.snippet?.publishedAt || '',
+        channelId: item.snippet?.channelId || '',
+      }));
+    } catch (error) {
+      console.error('Error fetching channel videos:', error);
+      throw error;
+    }
+  }
+
+  async getUserCommentOnVideo(videoId: string, userChannelId: string): Promise<YouTubeComment | null> {
+    try {
+      const response = await youtube.commentThreads.list({
+        key: this.apiKey,
+        part: ['snippet'],
+        videoId: videoId,
+        maxResults: 100,
+      });
+
+      if (!response.data.items) {
+        return null;
+      }
+
+      // Look for comments from the specific user
+      for (const item of response.data.items) {
+        const comment = item.snippet?.topLevelComment?.snippet;
+        if (comment?.authorChannelId?.value === userChannelId) {
+          return {
+            id: item.snippet?.topLevelComment?.id || '',
+            textDisplay: comment.textDisplay || '',
+            authorDisplayName: comment.authorDisplayName || '',
+            publishedAt: comment.publishedAt || '',
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error checking user comment on video:', error);
+      return null;
+    }
+  }
+
+  async postComment(videoId: string, commentText: string): Promise<boolean> {
+    try {
+      await youtube.commentThreads.insert({
+        auth: this.oauth2Client,
+        part: ['snippet'],
+        requestBody: {
+          snippet: {
+            videoId: videoId,
+            topLevelComment: {
+              snippet: {
+                textOriginal: commentText,
+              },
+            },
+          },
+        },
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error posting comment:', error);
+      throw error;
+    }
+  }
+
+  async likeVideo(videoId: string): Promise<boolean> {
+    try {
+      await youtube.videos.rate({
+        auth: this.oauth2Client,
+        id: videoId,
+        rating: 'like',
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error liking video:', error);
+      throw error;
+    }
+  }
+
+  async getVideoDetails(videoId: string) {
+    try {
+      const response = await youtube.videos.list({
+        key: this.apiKey,
+        part: ['snippet', 'statistics'],
+        id: [videoId],
+      });
+
+      if (!response.data.items || response.data.items.length === 0) {
+        return null;
+      }
+
+      const video = response.data.items[0];
+      return {
+        id: video.id,
+        title: video.snippet?.title,
+        description: video.snippet?.description,
+        publishedAt: video.snippet?.publishedAt,
+        channelId: video.snippet?.channelId,
+        channelTitle: video.snippet?.channelTitle,
+        viewCount: video.statistics?.viewCount,
+        likeCount: video.statistics?.likeCount,
+        commentCount: video.statistics?.commentCount,
+      };
+    } catch (error) {
+      console.error('Error getting video details:', error);
+      return null;
+    }
+  }
+}
+
+export const youtubeService = new YouTubeService();
