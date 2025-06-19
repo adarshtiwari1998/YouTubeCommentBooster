@@ -81,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Authorization code is required" });
       }
 
-      const tokens = await youtubeService.getTokenFromCode(code as string);
+      const tokens = await youtubeService.exchangeCodeForTokens(code as string);
       youtubeService.setCredentials(tokens.access_token, tokens.refresh_token);
       
       const userChannelInfo = await youtubeService.getChannelInfo("mine");
