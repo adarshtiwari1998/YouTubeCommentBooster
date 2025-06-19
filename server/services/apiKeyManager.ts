@@ -7,6 +7,11 @@ export class ApiKeyManager {
     // Support multiple API keys separated by commas
     this.apiKeys = apiKeyString.split(',').map(key => key.trim()).filter(key => key.length > 0);
     
+    console.log(`Configured ${this.apiKeys.length} YouTube API keys`);
+    this.apiKeys.forEach((key, index) => {
+      console.log(`Key ${index + 1}: ${key.substring(0, 12)}...`);
+    });
+    
     if (this.apiKeys.length === 0) {
       console.warn('No YouTube API keys configured');
     }
@@ -32,6 +37,7 @@ export class ApiKeyManager {
 
   getCurrentApiKey(): string {
     if (this.apiKeys.length === 0) {
+      console.warn('No API keys available');
       return '';
     }
 
@@ -42,6 +48,7 @@ export class ApiKeyManager {
       if (now > status.resetTime) {
         status.used = false;
         status.resetTime = this.getNextResetTime();
+        console.log(`Reset quota status for key ${key.substring(0, 12)}...`);
       }
     });
 
@@ -53,22 +60,26 @@ export class ApiKeyManager {
       
       if (status && !status.used) {
         this.currentKeyIndex = keyIndex;
+        console.log(`Using API key ${keyIndex + 1}: ${key.substring(0, 12)}...`);
         return key;
       }
     }
 
     // If all keys are exhausted, return the current one anyway
-    return this.apiKeys[this.currentKeyIndex];
+    const currentKey = this.apiKeys[this.currentKeyIndex];
+    console.log(`All keys exhausted, using current: ${currentKey.substring(0, 12)}...`);
+    return currentKey;
   }
 
   markKeyAsExhausted(apiKey: string): void {
     const status = this.keyQuotaStatus.get(apiKey);
     if (status) {
       status.used = true;
-      console.log(`API key ${apiKey.substring(0, 8)}... marked as exhausted`);
+      console.log(`API key ${apiKey.substring(0, 12)}... marked as exhausted`);
       
       // Move to next key
       this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
+      console.log(`Switched to API key index ${this.currentKeyIndex + 1}`);
     }
   }
 
