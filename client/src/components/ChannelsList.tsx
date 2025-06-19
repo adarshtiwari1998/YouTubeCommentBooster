@@ -11,7 +11,7 @@ import AddChannelDialog from "./AddChannelDialog";
 export default function ChannelsList() {
   const { toast } = useToast();
   
-  const { data: channels, isLoading, refetch } = useQuery({
+  const { data: channels = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/channels"],
   });
 
@@ -136,7 +136,7 @@ export default function ChannelsList() {
         </div>
       </CardHeader>
       <CardContent>
-        {channels && channels.length > 0 ? (
+        {channels.length > 0 ? (
           <div className="space-y-4">
             {channels.map((channel: any) => (
               <div key={channel.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">

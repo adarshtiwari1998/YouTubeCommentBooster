@@ -68,8 +68,13 @@ export default function Settings() {
   const handleYouTubeAuth = async () => {
     try {
       const response = await apiRequest("GET", "/api/auth/youtube");
-      window.location.href = response.authUrl;
+      if (response.authUrl) {
+        window.location.href = response.authUrl;
+      } else {
+        throw new Error("No auth URL received");
+      }
     } catch (error) {
+      console.error("YouTube auth error:", error);
       toast({
         title: "Error",
         description: "Failed to initiate YouTube authentication",

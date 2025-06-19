@@ -75,7 +75,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/youtube", requireAuth, (req: AuthRequest, res) => {
     try {
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        return res.status(500).json({ error: "Google OAuth credentials not configured" });
+      }
+      
       const authUrl = youtubeService.getAuthUrl();
+      console.log("Generated auth URL:", authUrl);
       res.json({ authUrl });
     } catch (error) {
       console.error("YouTube auth URL error:", error);

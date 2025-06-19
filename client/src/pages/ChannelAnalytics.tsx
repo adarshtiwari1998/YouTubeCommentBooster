@@ -16,12 +16,12 @@ export default function ChannelAnalytics() {
     enabled: !!channelId,
   });
 
-  const { data: videos, isLoading: videosLoading } = useQuery({
+  const { data: videos = [], isLoading: videosLoading } = useQuery({
     queryKey: [`/api/channels/${channelId}/videos`],
     enabled: !!channelId,
   });
 
-  const { data: processingLogs, isLoading: logsLoading } = useQuery({
+  const { data: processingLogs = [], isLoading: logsLoading } = useQuery({
     queryKey: [`/api/processing/logs`, channelId],
     enabled: !!channelId,
   });
@@ -39,11 +39,11 @@ export default function ChannelAnalytics() {
     return <div className="p-6">Channel not found</div>;
   }
 
-  const totalVideos = videos?.length || 0;
-  const processedVideos = videos?.filter((v: any) => v.status === 'completed')?.length || 0;
-  const commentsPosted = videos?.filter((v: any) => v.hasCommented)?.length || 0;
-  const likesGiven = videos?.filter((v: any) => v.hasLiked)?.length || 0;
-  const pendingVideos = videos?.filter((v: any) => v.status === 'pending')?.length || 0;
+  const totalVideos = videos.length || 0;
+  const processedVideos = videos.filter((v: any) => v.status === 'completed')?.length || 0;
+  const commentsPosted = videos.filter((v: any) => v.hasCommented)?.length || 0;
+  const likesGiven = videos.filter((v: any) => v.hasLiked)?.length || 0;
+  const pendingVideos = videos.filter((v: any) => v.status === 'pending')?.length || 0;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -65,16 +65,16 @@ export default function ChannelAnalytics() {
           </Button>
         </Link>
         <div className="flex items-center gap-4">
-          {channel.thumbnailUrl && (
+          {channel?.thumbnailUrl && (
             <img
               src={channel.thumbnailUrl}
-              alt={channel.name}
+              alt={channel.name || 'Channel'}
               className="w-16 h-16 rounded-full object-cover"
             />
           )}
           <div>
-            <h1 className="text-3xl font-bold">{channel.name}</h1>
-            <p className="text-muted-foreground">{channel.handle}</p>
+            <h1 className="text-3xl font-bold">{channel?.name || 'Channel'}</h1>
+            <p className="text-muted-foreground">{channel?.handle || channel?.channelId}</p>
           </div>
         </div>
       </div>
@@ -142,7 +142,7 @@ export default function ChannelAnalytics() {
         <CardContent>
           {logsLoading ? (
             <div>Loading processing logs...</div>
-          ) : processingLogs && processingLogs.length > 0 ? (
+          ) : processingLogs.length > 0 ? (
             <div className="space-y-4">
               {processingLogs.slice(0, 10).map((log: any, index: number) => (
                 <div key={index} className="flex items-center gap-4 p-3 border rounded-lg">
@@ -172,7 +172,7 @@ export default function ChannelAnalytics() {
         <CardContent>
           {videosLoading ? (
             <div>Loading videos...</div>
-          ) : videos && videos.length > 0 ? (
+          ) : videos.length > 0 ? (
             <div className="space-y-4">
               {videos.map((video: any) => (
                 <div key={video.id} className="flex items-center gap-4 p-4 border rounded-lg">
