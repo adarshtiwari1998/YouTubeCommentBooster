@@ -156,22 +156,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChannel(id: number): Promise<void> {
     try {
+      console.log(`Starting deletion process for channel ${id}`);
+      
       // Delete in proper order to handle foreign key constraints
       
       // 1. Delete videos first (they reference channel_id)
-      await db.delete(videos).where(eq(videos.channelId, id));
+      const deletedVideos = await db.delete(videos).where(eq(videos.channelId, id));
+      console.log(`Deleted videos:`, deletedVideos);
       
       // 2. Delete activity logs related to this channel
-      await db.delete(activityLogs).where(eq(activityLogs.channelId, id));
+      const deletedLogs = await db.delete(activityLogs).where(eq(activityLogs.channelId, id));
+      console.log(`Deleted activity logs:`, deletedLogs);
       
       // 3. Delete processing logs that reference this channel
       await db.execute(sql`DELETE FROM processing_logs WHERE channel_id = ${id}`);
+      console.log(`Deleted processing logs for channel ${id}`);
       
       // 4. Delete video queue items that reference this channel
       await db.execute(sql`DELETE FROM video_queue WHERE channel_id = ${id}`);
+      console.log(`Deleted video queue items for channel ${id}`);
       
       // 5. Finally delete the channel itself
-      await db.delete(channels).where(eq(channels.id, id));
+      const deletedChannel = await db.delete(channels).where(eq(channels.id, id));
+      console.log(`Deleted channel:`, deletedChannel);
+      
+      console.log(`Successfully deleted channel ${id} and all related data`);
       
     } catch (error) {
       console.error('Error deleting channel:', error);
