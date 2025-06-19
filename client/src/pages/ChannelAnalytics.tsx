@@ -1,4 +1,4 @@
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,16 +7,19 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Play, MessageSquare, ThumbsUp, Eye, Calendar, Clock } from "lucide-react";
 import { Link } from "wouter";
+import ImportProgress from "@/components/ImportProgress";
+import type { Channel, Video } from "@/../../shared/schema";
 
 export default function ChannelAnalytics() {
   const { channelId } = useParams();
+  const [, setLocation] = useLocation();
 
-  const { data: channel, isLoading: channelLoading } = useQuery({
+  const { data: channel, isLoading: channelLoading, error: channelError } = useQuery<Channel>({
     queryKey: [`/api/channels/${channelId}`],
     enabled: !!channelId,
   });
 
-  const { data: videos = [], isLoading: videosLoading } = useQuery({
+  const { data: videos = [], isLoading: videosLoading } = useQuery<Video[]>({
     queryKey: [`/api/channels/${channelId}/videos`],
     enabled: !!channelId,
   });
@@ -35,15 +38,45 @@ export default function ChannelAnalytics() {
     return <div className="p-6">Loading channel information...</div>;
   }
 
+  if (channelError) {
+    return (
+      <div className="p-6 text-center">
+        <h1 className="text-2xl font-bold mb-4">Channel Not Found</h1>
+        <p className="text-muted-foreground mb-4">
+          The channel you're looking for doesn't exist or has been deleted.
+        </p>
+        <Link href="/channels">
+          <Button>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Channels
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
   if (!channel) {
     return <div className="p-6">Channel not found</div>;
   }
 
+  // Show import progress if no videos have been imported yet
+  if (videos.length === 0 || channel.status === 'pending') {
+    return (
+      <div className="p-6">
+        <ImportProgress 
+          channelId={parseInt(channelId || '0')}
+          channelName={channel.name}
+          onImportComplete={() => setLocation(`/channel/${channelId}`)}
+        />
+      </div>
+    );
+  }
+
   const totalVideos = videos.length || 0;
-  const processedVideos = videos.filter((v: any) => v.status === 'completed')?.length || 0;
-  const commentsPosted = videos.filter((v: any) => v.hasCommented)?.length || 0;
-  const likesGiven = videos.filter((v: any) => v.hasLiked)?.length || 0;
-  const pendingVideos = videos.filter((v: any) => v.status === 'pending')?.length || 0;
+  const processedVideos = videos.filter((v) => v.status === 'completed')?.length || 0;
+  const commentsPosted = videos.filter((v) => v.hasCommented)?.length || 0;
+  const likesGiven = videos.filter((v) => v.hasLiked)?.length || 0;
+  const pendingVideos = videos.filter((v) => v.status === 'pending')?.length || 0;
 
   const getStatusColor = (status: string) => {
     switch (status) {

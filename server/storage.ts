@@ -155,12 +155,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteChannel(id: number): Promise<void> {
-    // Delete all related data for this channel
-    await db.delete(videos).where(eq(videos.channelId, id));
-    await db.delete(videoQueue).where(eq(videoQueue.channelId, id));
-    await db.delete(processingLogs).where(eq(processingLogs.channelId, id));
-    // Delete the channel
-    await db.delete(channels).where(eq(channels.id, id));
+    try {
+      // Delete all related data for this channel first
+      await db.delete(videos).where(eq(videos.channelId, id));
+      
+      // Delete activity logs related to this channel (handle both direct references and null values)
+      await db.delete(activityLogs).where(eq(activityLogs.channelId, id));
+      
+      // Also delete activity logs that might have channelId in metadata but not in the channelId field
+      await db.execute(sql`DELETE FROM activity_logs WHERE metadata::text LIKE '%"channelId":${id}%'`);
+      
+      // Try to delete from video queue and processing logs if they exist
+      try {
+        await db.execute(sql`DELETE FROM video_queue WHERE channel_id = ${id}`);
+      } catch (e) {
+        // Table might not exist, continue
+      }
+      
+      try {
+        await db.execute(sql`DELETE FROM processing_logs WHERE channel_id = ${id}`);
+      } catch (e) {
+        // Table might not exist, continue
+      }
+      
+      // Delete the channel
+      await db.delete(channels).where(eq(channels.id, id));
+    } catch (error) {
+      console.error('Error deleting channel:', error);
+      throw new Error('Failed to delete channel and related data');
+    }
   }
 
   async getVideosByChannelId(channelId: number): Promise<Video[]> {
