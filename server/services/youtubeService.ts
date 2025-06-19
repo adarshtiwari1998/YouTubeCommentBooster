@@ -180,11 +180,19 @@ export class YouTubeService {
 
   async getChannelInfo(channelId: string) {
     try {
-      const response = await youtube.channels.list({
-        key: this.apiKey,
+      // Handle special case for "mine" to get authenticated user's channel
+      const requestParams: any = {
         part: ['snippet', 'statistics'],
-        id: [channelId],
-      });
+      };
+
+      if (channelId === "mine") {
+        requestParams.mine = true;
+      } else {
+        requestParams.id = [channelId];
+        requestParams.key = this.apiKey;
+      }
+
+      const response = await youtube.channels.list(requestParams);
 
       if (!response.data.items || response.data.items.length === 0) {
         return null;

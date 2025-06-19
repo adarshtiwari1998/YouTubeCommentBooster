@@ -60,12 +60,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/status", requireAuth, (req: AuthRequest, res) => {
     res.json({
-      authenticated: !!req.user.youtubeToken,
+      authenticated: true,
       user: {
+        id: req.user.id,
         username: req.user.username,
+        youtubeConnected: !!req.user.youtubeToken,
         youtubeChannelId: req.user.youtubeChannelId,
       },
     });
+  });
+
+  app.get("/api/auth/youtube", requireAuth, (req: AuthRequest, res) => {
+    try {
+      const authUrl = youtubeService.getAuthUrl();
+      res.json({ authUrl });
+    } catch (error) {
+      console.error("YouTube auth URL error:", error);
+      res.status(500).json({ error: "Failed to generate YouTube authentication URL" });
+    }
+  });
+
+  app.get("/api/auth/youtube/callback", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { code } = req.query;
+      
+      if (!code) {
+        return res.status(400).json({ error: "Authorization code is required" });
+      }
+
+      const tokens = await youtubeService.getTokenFromCode(code as string);
+      youtubeService.setCredentials(tokens.access_token, tokens.refresh_token);
+      
+      const userChannelInfo = await youtubeService.getChannelInfo("mine");
+      
+      if (!userChannelInfo) {
+        return res.status(400).json({ error: "Unable to fetch YouTube channel information" });
+      }
+
+      await storage.updateUserTokens(
+        req.user.id,
+        tokens.access_token,
+        tokens.refresh_token,
+        userChannelInfo.id
+      );
+
+      await storage.createActivityLog({
+        type: "info",
+        description: `YouTube authentication successful for channel: ${userChannelInfo.title}`,
+        metadata: { channelId: userChannelInfo.id, channelName: userChannelInfo.title },
+      });
+
+      res.json({ 
+        success: true, 
+        channelName: userChannelInfo.title,
+        channelId: userChannelInfo.id 
+      });
+    } catch (error) {
+      console.error("YouTube callback error:", error);
+      res.status(500).json({ error: "Failed to complete YouTube authentication" });
+    }
   });
 
   // Dashboard stats
@@ -107,53 +160,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { channelUrl } = req.body;
       
-      if (!channelUrl) {
-        return res.status(400).json({ error: "Channel URL is required" });
+      if (!channelUrl || typeof channelUrl !== 'string') {
+        return res.status(400).json({ error: "Valid channel URL is required" });
       }
 
-      // Extract handle from URL
-      const urlMatch = channelUrl.match(/@([^/?]+)/);
-      if (!urlMatch) {
-        return res.status(400).json({ error: "Invalid YouTube channel URL format" });
-      }
-
-      const handle = `@${urlMatch[1]}`;
+      // Extract channel handle from URL
+      const urlPattern = /youtube\.com\/@([^\/\?]+)/;
+      const match = channelUrl.match(urlPattern);
       
-      // Check if channel already exists
-      const existingChannel = await storage.getChannelByChannelId(handle);
-      if (existingChannel) {
-        return res.status(400).json({ error: "Channel already exists" });
+      if (!match) {
+        return res.status(400).json({ error: "Invalid YouTube channel URL format. Please use format: https://www.youtube.com/@channelhandle" });
       }
 
-      // Get channel info from YouTube API
+      const handle = `@${match[1]}`;
+      
+      // Get channel ID from handle using YouTube API
       const channelId = await youtubeService.getChannelIdFromHandle(handle);
       if (!channelId) {
-        return res.status(404).json({ error: "Channel not found on YouTube" });
+        return res.status(404).json({ error: "Channel not found. Please check the URL and ensure the channel exists." });
       }
 
-      // Get channel details
+      // Check if channel already exists
+      const existingChannel = await storage.getChannelByChannelId(channelId);
+      if (existingChannel) {
+        return res.status(409).json({ error: "This channel is already added to your automation list." });
+      }
+
+      // Get channel info to fetch proper name and details
       const channelInfo = await youtubeService.getChannelInfo(channelId);
       if (!channelInfo) {
-        return res.status(404).json({ error: "Failed to fetch channel information" });
+        return res.status(404).json({ error: "Unable to fetch channel information from YouTube API." });
       }
 
-      // Create channel in database
+      // Create channel with fetched information
       const newChannel = await storage.createChannel({
-        name: channelInfo.title,
+        name: channelInfo.title || handle,
         handle: handle,
         channelId: channelId,
-        thumbnailUrl: channelInfo.thumbnailUrl,
-        subscriberCount: channelInfo.subscriberCount,
-        totalVideos: 0,
+        totalVideos: parseInt(channelInfo.videoCount) || 0,
         processedVideos: 0,
-        status: "pending",
+        status: "active",
         isActive: true,
+      });
+
+      // Log channel addition
+      await storage.createActivityLog({
+        type: "info",
+        description: `Added new channel: ${channelInfo.title} (${handle})`,
+        metadata: { channelId, channelName: channelInfo.title },
       });
 
       res.json(newChannel);
     } catch (error) {
       console.error("Add channel error:", error);
-      res.status(500).json({ error: "Failed to add channel" });
+      res.status(500).json({ error: "Failed to add channel. Please try again." });
     }
   });
 

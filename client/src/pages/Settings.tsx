@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,19 +8,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings as SettingsIcon, Youtube, Brain, Shield } from "lucide-react";
-import { useState } from "react";
-import { useAutomation } from "@/hooks/useAutomation";
-import { useAuth } from "@/hooks/useAuth";
+import { Settings as SettingsIcon, Youtube, Brain, Shield, Save } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const { toast } = useToast();
-  const { updateSettings } = useAutomation();
-  const { data: authStatus } = useAuth();
+  const queryClient = useQueryClient();
   
   const { data: settings, isLoading } = useQuery({
     queryKey: ["/api/automation/settings"],
+  });
+
+  const { data: authStatus } = useQuery({
+    queryKey: ["/api/auth/status"],
   });
 
   const [formData, setFormData] = useState({
@@ -30,7 +32,7 @@ export default function Settings() {
   });
 
   // Update form data when settings load
-  React.useEffect(() => {
+  useEffect(() => {
     if (settings) {
       setFormData({
         delayMinutes: settings.delayMinutes || 10,
@@ -41,24 +43,39 @@ export default function Settings() {
     }
   }, [settings]);
 
-  const handleSave = async () => {
-    try {
-      await updateSettings.mutateAsync(formData);
+  const updateSettings = useMutation({
+    mutationFn: (data: any) => apiRequest("PUT", "/api/automation/settings", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/automation/settings"] });
       toast({
         title: "Settings Saved",
         description: "Your automation settings have been updated successfully.",
       });
-    } catch (error) {
+    },
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to save settings",
         variant: "destructive",
       });
-    }
+    },
+  });
+
+  const handleSave = async () => {
+    updateSettings.mutate(formData);
   };
 
-  const handleYouTubeAuth = () => {
-    window.location.href = "/api/auth/youtube";
+  const handleYouTubeAuth = async () => {
+    try {
+      const response = await apiRequest("GET", "/api/auth/youtube");
+      window.location.href = response.authUrl;
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to initiate YouTube authentication",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -118,22 +135,22 @@ export default function Settings() {
                 <div>
                   <p className="font-medium text-foreground">Connection Status</p>
                   <p className="text-sm text-muted-foreground">
-                    {authStatus?.authenticated ? "Connected as @adarshtripathi5520" : "Not connected"}
+                    {authStatus?.user?.youtubeConnected ? `Connected as ${authStatus.user.youtubeChannelId || "@adarshtripathi5520"}` : "Not connected"}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    authStatus?.authenticated ? "bg-success" : "bg-error"
+                    authStatus?.user?.youtubeConnected ? "bg-green-500" : "bg-red-500"
                   }`}></div>
                   <span className={`text-sm font-medium ${
-                    authStatus?.authenticated ? "text-success" : "text-error"
+                    authStatus?.user?.youtubeConnected ? "text-green-600" : "text-red-600"
                   }`}>
-                    {authStatus?.authenticated ? "Connected" : "Disconnected"}
+                    {authStatus?.user?.youtubeConnected ? "Connected" : "Disconnected"}
                   </span>
                 </div>
               </div>
               
-              {!authStatus?.authenticated && (
+              {!authStatus?.user?.youtubeConnected && (
                 <Button
                   onClick={handleYouTubeAuth}
                   className="bg-red-500 hover:bg-red-600 text-white"
@@ -259,8 +276,9 @@ export default function Settings() {
             <Button
               onClick={handleSave}
               disabled={updateSettings.isPending}
-              className="bg-material-blue hover:bg-material-blue-dark text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
+              <Save className="h-4 w-4 mr-2" />
               {updateSettings.isPending ? "Saving..." : "Save Settings"}
             </Button>
           </div>
