@@ -36,7 +36,7 @@ export default function Sidebar() {
           <div>
             <h1 className="text-lg font-medium text-sidebar-foreground">YouTube Automation</h1>
             <p className="text-sm text-sidebar-foreground/60">
-              {authStatus?.authenticated ? "@adarshtripathi5520" : "Not authenticated"}
+              {authStatus?.user?.youtubeConnected ? `Connected as ${authStatus.user.username}` : "YouTube not connected"}
             </p>
           </div>
         </div>
@@ -67,12 +67,16 @@ export default function Sidebar() {
       {/* Status Indicator */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center space-x-2 text-sm">
-          <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
-          <span className="text-sidebar-foreground/60">System Active</span>
+          <div className={`w-2 h-2 rounded-full ${authStatus?.user?.youtubeConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+          <span className="text-sidebar-foreground/60">
+            {authStatus?.user?.youtubeConnected ? 'YouTube Connected' : 'YouTube Disconnected'}
+          </span>
         </div>
-        <div className="mt-2 text-xs text-sidebar-foreground/50">
-          Last sync: <span>2 minutes ago</span>
-        </div>
+        {authStatus?.user?.youtubeConnected && (
+          <div className="mt-2 text-xs text-sidebar-foreground/50">
+            Ready for automation
+          </div>
+        )}
       </div>
     </div>
   );
