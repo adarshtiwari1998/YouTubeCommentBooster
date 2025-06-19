@@ -10,6 +10,7 @@ import Automation from "@/pages/Automation";
 import Comments from "@/pages/Comments";
 import Analytics from "@/pages/Analytics";
 import ProcessChannel from "@/pages/ProcessChannel";
+import ChannelAnalytics from "@/pages/ChannelAnalytics";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/Sidebar";
 
@@ -27,6 +28,7 @@ function Router() {
           <Route path="/analytics" component={Analytics} />
           <Route path="/settings" component={Settings} />
           <Route path="/process/:id" component={ProcessChannel} />
+          <Route path="/channel/:channelId" component={ChannelAnalytics} />
           <Route component={NotFound} />
         </Switch>
       </div>

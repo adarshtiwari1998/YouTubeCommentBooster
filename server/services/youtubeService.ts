@@ -23,10 +23,14 @@ export class YouTubeService {
   constructor() {
     this.apiKey = process.env.YOUTUBE_API_KEY || process.env.GOOGLE_API_KEY || '';
     
+    const redirectUri = process.env.REPLIT_DEV_DOMAIN ? 
+      `${process.env.REPLIT_DEV_DOMAIN}/api/auth/youtube/callback` : 
+      'http://localhost:5000/api/auth/youtube/callback';
+    
     this.oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID || process.env.OAUTH_CLIENT_ID || '',
-      process.env.GOOGLE_CLIENT_SECRET || process.env.OAUTH_CLIENT_SECRET || '',
-      process.env.GOOGLE_REDIRECT_URI || process.env.OAUTH_REDIRECT_URI || 'http://localhost:5000/api/auth/callback'
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri
     );
   }
 
@@ -43,11 +47,15 @@ export class YouTubeService {
       'https://www.googleapis.com/auth/youtube.force-ssl'
     ];
     
+    const redirectUri = process.env.REPLIT_DEV_DOMAIN ? 
+      `${process.env.REPLIT_DEV_DOMAIN}/api/auth/youtube/callback` : 
+      'http://localhost:5000/api/auth/youtube/callback';
+
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
       prompt: 'consent',
-      redirect_uri: process.env.GOOGLE_REDIRECT_URI || `${process.env.REPLIT_DEV_DOMAIN}/api/auth/youtube/callback`
+      redirect_uri: redirectUri
     });
   }
 
@@ -119,9 +127,23 @@ export class YouTubeService {
     }
   }
 
-  getUserChannelId(): string {
-    // Return placeholder for now
-    return 'user_channel_id';
+  async getUserChannelId(): Promise<string> {
+    try {
+      const response = await youtube.channels.list({
+        auth: this.oauth2Client,
+        part: ['id'],
+        mine: true
+      });
+      
+      if (response.data.items && response.data.items.length > 0) {
+        return response.data.items[0].id || '';
+      }
+      
+      throw new Error('No channel found for authenticated user');
+    } catch (error) {
+      console.error('Error getting user channel ID:', error);
+      throw error;
+    }
   }
 
   async getUserCommentOnVideo(videoId: string, userChannelId: string): Promise<YouTubeComment | null> {
@@ -221,7 +243,7 @@ export class YouTubeService {
         id: channel.id,
         title: channel.snippet?.title,
         description: channel.snippet?.description,
-        thumbnailUrl: channel.snippet?.thumbnails?.default?.url,
+        thumbnailUrl: channel.snippet?.thumbnails?.medium?.url || channel.snippet?.thumbnails?.high?.url || channel.snippet?.thumbnails?.default?.url,
         subscriberCount: channel.statistics?.subscriberCount,
         videoCount: channel.statistics?.videoCount,
         viewCount: channel.statistics?.viewCount,

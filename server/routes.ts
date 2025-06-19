@@ -31,28 +31,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { code } = req.query;
       if (!code || typeof code !== 'string') {
-        return res.status(400).json({ error: "Authorization code required" });
+        return res.redirect('/settings?error=no_code');
       }
 
       const tokens = await youtubeService.getTokenFromCode(code);
       if (!tokens.access_token || !tokens.refresh_token) {
-        return res.status(400).json({ error: "Failed to get tokens" });
+        return res.redirect('/settings?error=no_tokens');
       }
 
-      // Get user's channel ID
+      // Set credentials and get user's channel ID
       youtubeService.setCredentials(tokens.access_token, tokens.refresh_token);
-      
-      // For demo, we'll use a placeholder channel ID
-      const channelId = "UC_demo_channel_id";
+      const userChannelId = await youtubeService.getUserChannelId();
       
       await storage.updateUserTokens(
         req.user.id,
         tokens.access_token,
         tokens.refresh_token,
-        channelId
+        userChannelId
       );
 
-      res.redirect("/?auth=success");
+      res.redirect("/settings?auth=success");
     } catch (error) {
       console.error("Auth callback error:", error);
       res.redirect("/?auth=error");

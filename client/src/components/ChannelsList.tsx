@@ -142,8 +142,16 @@ export default function ChannelsList() {
               <div key={channel.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                      <Tv className="h-8 w-8 text-white" />
+                    <div className="w-16 h-16 rounded-lg overflow-hidden flex items-center justify-center bg-gray-100">
+                      {channel.thumbnailUrl ? (
+                        <img
+                          src={channel.thumbnailUrl}
+                          alt={channel.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Tv className="h-8 w-8 text-gray-400" />
+                      )}
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-foreground">{channel.name}</h3>
@@ -182,11 +190,11 @@ export default function ChannelsList() {
                   
                   <div className="flex flex-col space-y-2 ml-4">
                     <Button
-                      onClick={() => window.location.href = `/process/${channel.id}`}
+                      onClick={() => window.location.href = `/channel/${channel.id}`}
                       size="sm" 
                       className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]"
                     >
-                      Process Videos
+                      View Channel
                     </Button>
                     <Button
                       onClick={() => handleSyncChannel(channel.id)}
