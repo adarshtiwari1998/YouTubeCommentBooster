@@ -66,6 +66,8 @@ export class VideoProcessingService {
 
       do {
         const videos = await youtubeService.getChannelVideos(channel.channelId, 50, nextPageToken);
+        if (!videos || videos.length === 0) break;
+        
         allVideos = allVideos.concat(videos);
         
         // Save videos in batches
@@ -94,7 +96,7 @@ export class VideoProcessingService {
         await this.logProcessing(channelId, null, 'fetch_progress', 'info', `Fetched page ${pageCount}, total videos: ${allVideos.length}`);
         
         nextPageToken = (videos as any).nextPageToken || '';
-      } while (nextPageToken && pageCount < 10); // Limit to prevent infinite loops
+      } while (nextPageToken && pageCount < 25); // Increased limit to fetch more videos (up to 1250 videos)
 
       // Update channel statistics
       await storage.updateChannelStats(channelId, allVideos.length, 0);

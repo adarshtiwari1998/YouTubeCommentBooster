@@ -85,12 +85,28 @@ export class YouTubeService {
 
   async getChannelVideos(channelId: string, maxResults = 50, pageToken?: string): Promise<YouTubeVideo[]> {
     try {
-      const response = await youtube.search.list({
+      // First, get the channel's uploads playlist ID
+      const channelResponse = await youtube.channels.list({
+        key: this.apiKey,
+        part: ['contentDetails'],
+        id: [channelId]
+      });
+
+      if (!channelResponse.data.items || channelResponse.data.items.length === 0) {
+        throw new Error('Channel not found');
+      }
+
+      const uploadsPlaylistId = channelResponse.data.items[0].contentDetails?.relatedPlaylists?.uploads;
+      
+      if (!uploadsPlaylistId) {
+        throw new Error('Channel uploads playlist not found');
+      }
+
+      // Now get ALL videos from the uploads playlist (includes Shorts)
+      const response = await youtube.playlistItems.list({
         key: this.apiKey,
         part: ['snippet'],
-        channelId: channelId,
-        type: ['video'],
-        order: 'date',
+        playlistId: uploadsPlaylistId,
         maxResults: maxResults,
         pageToken: pageToken,
       });
@@ -100,7 +116,7 @@ export class YouTubeService {
       }
 
       const videos = response.data.items.map(item => ({
-        id: item.id?.videoId || '',
+        id: item.snippet?.resourceId?.videoId || '',
         title: item.snippet?.title || '',
         publishedAt: item.snippet?.publishedAt || '',
         channelId: item.snippet?.channelId || '',
