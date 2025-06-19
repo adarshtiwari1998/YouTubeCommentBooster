@@ -1,17 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, Tv, ChevronRight, Trash2, ExternalLink } from "lucide-react";
+import { RefreshCw, Tv, ChevronRight, Trash2, ExternalLink, Play } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Channel } from "@/../../shared/schema";
 import AddChannelDialog from "./AddChannelDialog";
 
 export default function ChannelsList() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
-  const { data: channels = [], isLoading, refetch } = useQuery({
+  const { data: channels = [], isLoading, refetch } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
   });
 
@@ -138,7 +141,7 @@ export default function ChannelsList() {
       <CardContent>
         {channels.length > 0 ? (
           <div className="space-y-4">
-            {channels.map((channel: any) => (
+            {channels.map((channel) => (
               <div key={channel.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-4">
@@ -163,11 +166,11 @@ export default function ChannelsList() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Fetched:</span>
-                          <span className="font-medium text-blue-600">{channel.fetchedVideos || 0}</span>
+                          <span className="font-medium text-blue-600">{channel.totalVideos || 0}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Processed:</span>
-                          <span className="font-medium text-green-600">{channel.completedVideos || 0}</span>
+                          <span className="font-medium text-green-600">{channel.processedVideos || 0}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Status:</span>
@@ -182,7 +185,7 @@ export default function ChannelsList() {
                         </div>
                       </div>
                       <Progress 
-                        value={channel.totalVideos > 0 ? ((channel.completedVideos || 0) / channel.totalVideos) * 100 : 0} 
+                        value={channel.totalVideos > 0 ? ((channel.processedVideos || 0) / channel.totalVideos) * 100 : 0} 
                         className="mt-3 h-2"
                       />
                     </div>
@@ -190,11 +193,19 @@ export default function ChannelsList() {
                   
                   <div className="flex flex-col space-y-2 ml-4">
                     <Button
-                      onClick={() => window.location.href = `/channel/${channel.id}`}
+                      onClick={() => setLocation(`/channel/${channel.id}`)}
                       size="sm" 
                       className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]"
                     >
-                      View Channel
+                      View Analytics
+                    </Button>
+                    <Button
+                      onClick={() => setLocation(`/process/${channel.id}`)}
+                      size="sm" 
+                      className="bg-green-600 hover:bg-green-700 text-white min-w-[120px]"
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Process
                     </Button>
                     <Button
                       onClick={() => handleSyncChannel(channel.id)}
@@ -212,7 +223,7 @@ export default function ChannelsList() {
                       className="min-w-[120px]"
                     >
                       <ExternalLink className="h-4 w-4 mr-2" />
-                      View Channel
+                      YouTube
                     </Button>
                     <Button
                       onClick={() => handleDeleteChannel(channel.id)}
