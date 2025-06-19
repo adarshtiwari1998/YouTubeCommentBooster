@@ -52,7 +52,7 @@ export class ApiKeyManager {
       }
     });
 
-    // Find first available key
+    // Find first available key, starting from where we left off
     for (let i = 0; i < this.apiKeys.length; i++) {
       const keyIndex = (this.currentKeyIndex + i) % this.apiKeys.length;
       const key = this.apiKeys[keyIndex];
@@ -65,10 +65,17 @@ export class ApiKeyManager {
       }
     }
 
-    // If all keys are exhausted, return the current one anyway
-    const currentKey = this.apiKeys[this.currentKeyIndex];
-    console.log(`All keys exhausted, using current: ${currentKey.substring(0, 12)}...`);
-    return currentKey;
+    // If all keys are marked as exhausted, reset all and try again
+    console.log('All keys marked as exhausted, resetting status and trying again...');
+    this.keyQuotaStatus.forEach((status) => {
+      status.used = false;
+    });
+    
+    // Try the next key in sequence
+    this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
+    const nextKey = this.apiKeys[this.currentKeyIndex];
+    console.log(`Reset all keys, now using API key ${this.currentKeyIndex + 1}: ${nextKey.substring(0, 12)}...`);
+    return nextKey;
   }
 
   markKeyAsExhausted(apiKey: string): void {
@@ -94,13 +101,17 @@ export class ApiKeyManager {
     operation: (apiKey: string) => Promise<T>,
     requiresAuth: boolean = false
   ): Promise<T> {
-    const maxRetries = requiresAuth ? 1 : this.apiKeys.length;
+    const maxRetries = requiresAuth ? 1 : this.apiKeys.length + 1; // Extra retry for reset scenario
     let lastError: any;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const currentKey = this.getCurrentApiKey();
-        return await operation(currentKey);
+        const result = await operation(currentKey);
+        
+        // If successful, log the successful key usage
+        console.log(`✓ API call successful with key ${this.currentKeyIndex + 1}`);
+        return result;
       } catch (error) {
         lastError = error;
         
@@ -108,15 +119,17 @@ export class ApiKeyManager {
         if (!requiresAuth && this.isQuotaError(error)) {
           const currentKey = this.getCurrentApiKey();
           this.markKeyAsExhausted(currentKey);
-          console.log(`Quota exhausted for key, trying next one. Attempt ${attempt + 1}/${maxRetries}`);
+          console.log(`⚠ Quota exhausted for key, trying next one. Attempt ${attempt + 1}/${maxRetries}`);
           continue;
         }
         
         // For other errors or authenticated requests, break the loop
+        console.log(`✗ API call failed with non-quota error:`, error.message);
         break;
       }
     }
 
+    console.log(`Failed after ${maxRetries} attempts with all available keys`);
     throw lastError;
   }
 }
