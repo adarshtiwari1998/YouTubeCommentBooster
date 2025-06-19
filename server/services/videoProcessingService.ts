@@ -41,7 +41,7 @@ export class VideoProcessingService {
         await this.queueVideosForProcessing(channelId);
         await this.processVideoQueue(channelId);
       } else {
-        await this.logProcessing(channelId, null, 'auth_required', 'warning', 'Authentication required to proceed with filtering and processing');
+        await this.logProcessing(channelId, null, 'auth_required', 'warning', 'YouTube authentication required to proceed with AI filtering and processing. Videos fetched successfully - connect YouTube account to continue.');
       }
 
     } catch (error) {
@@ -360,6 +360,8 @@ export class VideoProcessingService {
       message,
       metadata
     });
+
+    // Log processing update (real-time updates handled via SSE)
   }
 
   async getChannelProcessingStatus(channelId: number): Promise<any> {

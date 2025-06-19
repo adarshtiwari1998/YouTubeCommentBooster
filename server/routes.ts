@@ -531,6 +531,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Server-Sent Events endpoint for real-time updates
+  app.get("/api/sse/updates", (req, res) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+
+    // Send heartbeat every 30 seconds
+    const heartbeat = setInterval(() => {
+      res.write('data: {"type":"heartbeat"}\n\n');
+    }, 30000);
+
+    // Send initial connection message
+    res.write('data: {"type":"connected"}\n\n');
+
+    // Store client for broadcasting updates
+    const clientId = Date.now();
+    
+    req.on('close', () => {
+      clearInterval(heartbeat);
+    });
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

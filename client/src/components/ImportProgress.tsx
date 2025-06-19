@@ -202,7 +202,7 @@ export default function ImportProgress({ channelId, channelName, onImportComplet
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">{log.message}</p>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(log.createdAt).toLocaleTimeString()}
+                        {log.createdAt ? new Date(log.createdAt).toLocaleTimeString() : 'Unknown time'}
                       </span>
                     </div>
                   </div>

@@ -462,10 +462,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProcessingLog(log: any): Promise<void> {
-    await db.execute(sql`
-      INSERT INTO processing_logs (channel_id, video_id, stage, status, message, metadata, created_at)
-      VALUES (${log.channelId}, ${log.videoId}, ${log.stage}, ${log.status}, ${log.message}, ${JSON.stringify(log.metadata || {})}, NOW())
-    `);
+    await db.insert(processingLogs).values({
+      channelId: log.channelId,
+      videoId: log.videoId,
+      stage: log.stage,
+      status: log.status,
+      message: log.message,
+      metadata: log.metadata || {}
+    });
   }
 
   async getProcessingLogs(channelId?: number, limit = 50): Promise<any[]> {
