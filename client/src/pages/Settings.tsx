@@ -68,8 +68,10 @@ export default function Settings() {
   const handleYouTubeAuth = async () => {
     try {
       const response = await apiRequest("GET", "/api/auth/youtube");
-      if (response.authUrl) {
-        window.location.href = response.authUrl;
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
       } else {
         throw new Error("No auth URL received");
       }
