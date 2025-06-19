@@ -35,13 +35,51 @@ export default function Settings() {
   useEffect(() => {
     if (settings) {
       setFormData({
-        delayMinutes: settings.delayMinutes || 10,
-        maxCommentsPerDay: settings.maxCommentsPerDay || 100,
-        aiPrompt: settings.aiPrompt || "",
-        isActive: settings.isActive || false,
+        delayMinutes: (settings as any).delayMinutes || 10,
+        maxCommentsPerDay: (settings as any).maxCommentsPerDay || 100,
+        aiPrompt: (settings as any).aiPrompt || "",
+        isActive: (settings as any).isActive || false,
       });
     }
   }, [settings]);
+
+  // Handle URL parameters for OAuth callback messages
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    const auth = urlParams.get('auth');
+
+    if (error === 'access_denied') {
+      toast({
+        title: "Authentication Cancelled",
+        description: "You cancelled the YouTube authentication process. You can try again when ready.",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', '/settings');
+    } else if (error === 'expired_code') {
+      toast({
+        title: "Authentication Expired",
+        description: "The authentication code expired. Please try connecting your YouTube account again.",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', '/settings');
+    } else if (error === 'auth_failed') {
+      toast({
+        title: "Authentication Failed",
+        description: "YouTube authentication failed. Please check your account and try again.",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', '/settings');
+    } else if (auth === 'success') {
+      toast({
+        title: "Success",
+        description: "YouTube account connected successfully!",
+      });
+      // Clear the URL parameters and refresh auth status
+      window.history.replaceState({}, '', '/settings');
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
+    }
+  }, [toast, queryClient]);
 
   const updateSettings = useMutation({
     mutationFn: (data: any) => apiRequest("PUT", "/api/automation/settings", data),

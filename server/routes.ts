@@ -52,7 +52,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/youtube/callback", requireAuth, async (req: AuthRequest, res) => {
     try {
-      const { code } = req.query;
+      const { code, error } = req.query;
+      
+      // Handle OAuth errors (user denied access, etc.)
+      if (error) {
+        console.log("OAuth error:", error);
+        return res.redirect("/settings?error=access_denied");
+      }
       
       if (!code) {
         return res.status(400).json({ error: "Authorization code is required" });
@@ -80,14 +86,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: { channelId: userChannelInfo.id, channelName: userChannelInfo.title },
       });
 
-      res.json({ 
-        success: true, 
-        channelName: userChannelInfo.title,
-        channelId: userChannelInfo.id 
-      });
+      res.redirect("/settings?auth=success");
     } catch (error) {
       console.error("YouTube callback error:", error);
-      res.status(500).json({ error: "Failed to complete YouTube authentication" });
+      
+      // Handle specific OAuth errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('invalid_grant')) {
+        return res.redirect("/settings?error=expired_code");
+      }
+      
+      res.redirect("/settings?error=auth_failed");
     }
   });
 
