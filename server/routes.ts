@@ -180,10 +180,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Channel not found. Please check the URL and ensure the channel exists." });
       }
 
-      // Check if channel already exists
-      const existingChannel = await storage.getChannelByChannelId(channelId);
-      if (existingChannel) {
+      // Check if channel already exists by channel ID or handle
+      const existingChannelById = await storage.getChannelByChannelId(channelId);
+      if (existingChannelById) {
         return res.status(409).json({ error: "This channel is already added to your automation list." });
+      }
+      
+      // Also check by handle to prevent duplicates with different channel IDs
+      const channels = await storage.getAllChannels();
+      const existingChannelByHandle = channels.find(c => c.handle === handle);
+      if (existingChannelByHandle) {
+        return res.status(409).json({ error: "A channel with this handle already exists." });
       }
 
       // Get channel info to fetch proper name and details
@@ -404,7 +411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         youtube: {
-          status: req.user.youtubeToken ? "connected" : "disconnected",
+          status: (req.user.youtubeToken && process.env.YOUTUBE_API_KEY) ? "connected" : "disconnected",
           quotaUsed: quota?.youtubeQuotaUsed || 0,
           quotaPercentage: Math.round(((quota?.youtubeQuotaUsed || 0) / 10000) * 100)
         },

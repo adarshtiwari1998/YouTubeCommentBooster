@@ -29,8 +29,9 @@ export default function Comments() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="space-y-6">
+        <div>
         <h1 className="text-3xl font-bold text-foreground">Comments & Interactions</h1>
         <p className="text-muted-foreground mt-1">
           View and manage your automated YouTube comments and likes
@@ -166,6 +167,7 @@ export default function Comments() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

@@ -35,8 +35,9 @@ export default function Automation() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="space-y-6">
+        <div>
         <h1 className="text-3xl font-bold text-foreground">Automation</h1>
         <p className="text-muted-foreground mt-1">
           Monitor and control your YouTube automation system
@@ -129,6 +130,7 @@ export default function Automation() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
