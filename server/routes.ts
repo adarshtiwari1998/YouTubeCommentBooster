@@ -18,48 +18,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Auth routes
-  app.get("/api/auth/youtube", requireAuth, (req: AuthRequest, res) => {
-    try {
-      const authUrl = youtubeService.getAuthUrl();
-      res.json({ authUrl });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to generate auth URL" });
-    }
-  });
-
-  app.get("/api/auth/youtube/callback", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const { code } = req.query;
-      if (!code || typeof code !== 'string') {
-        return res.redirect('/settings?error=no_code');
-      }
-
-      const tokens = await youtubeService.getTokenFromCode(code);
-      if (!tokens.access_token || !tokens.refresh_token) {
-        return res.redirect('/settings?error=no_tokens');
-      }
-
-      // Set credentials and get user's channel ID
-      youtubeService.setCredentials(tokens.access_token, tokens.refresh_token);
-      const userChannelInfo = await youtubeService.getChannelInfo("mine");
-      
-      if (!userChannelInfo) {
-        return res.redirect('/settings?error=no_channel_info');
-      }
-
-      await storage.updateUserTokens(
-        req.user.id,
-        tokens.access_token,
-        tokens.refresh_token,
-        userChannelInfo.id || 'unknown'
-      );
-
-      res.redirect("/settings?auth=success");
-    } catch (error) {
-      console.error("Auth callback error:", error);
-      res.redirect("/?auth=error");
-    }
-  });
 
   app.get("/api/auth/status", requireAuth, (req: AuthRequest, res) => {
     res.json({
@@ -77,6 +35,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
         return res.status(500).json({ error: "Google OAuth credentials not configured" });
+      }
+      
+      if (!process.env.YOUTUBE_API_KEY) {
+        return res.status(500).json({ error: "YouTube API key not configured" });
       }
       
       const authUrl = youtubeService.getAuthUrl();
