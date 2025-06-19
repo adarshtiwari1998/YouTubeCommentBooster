@@ -41,13 +41,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Set credentials and get user's channel ID
       youtubeService.setCredentials(tokens.access_token, tokens.refresh_token);
-      const userChannelId = await youtubeService.getUserChannelId();
+      const userChannelInfo = await youtubeService.getChannelInfo("mine");
       
+      if (!userChannelInfo) {
+        return res.redirect('/settings?error=no_channel_info');
+      }
+
       await storage.updateUserTokens(
         req.user.id,
         tokens.access_token,
         tokens.refresh_token,
-        userChannelId
+        userChannelInfo.id || 'unknown'
       );
 
       res.redirect("/settings?auth=success");
@@ -100,12 +104,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.user.id,
         tokens.access_token,
         tokens.refresh_token,
-        userChannelInfo.id
+        userChannelInfo.id || 'unknown'
       );
 
       await storage.createActivityLog({
         type: "info",
-        description: `YouTube authentication successful for channel: ${userChannelInfo.title}`,
+        message: `YouTube authentication successful for channel: ${userChannelInfo.title}`,
         metadata: { channelId: userChannelInfo.id, channelName: userChannelInfo.title },
       });
 
@@ -137,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Auto-start fetching for new channels
       for (const channel of channels) {
-        if (!channel.fetchingComplete && channel.status === 'pending') {
+        if (channel.status === 'pending') {
           videoProcessingService.startChannelProcessing(channel.id, false).catch(error => {
             console.error(`Auto-fetch failed for channel ${channel.id}:`, error);
           });
@@ -198,18 +202,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newChannel = await storage.createChannel({
         name: channelInfo.title || handle,
         handle: handle,
-        channelId: channelId,
-        totalVideos: parseInt(channelInfo.videoCount) || 0,
+        channelId: channelId || '',
+        subscriberCount: channelInfo.subscriberCount || "0",
+        totalVideos: parseInt(channelInfo.videoCount || '0') || 0,
         processedVideos: 0,
-        status: "active",
+        status: "pending",
         isActive: true,
+        thumbnailUrl: channelInfo.thumbnailUrl,
       });
 
       // Log channel addition
       await storage.createActivityLog({
         type: "info",
-        description: `Added new channel: ${channelInfo.title} (${handle})`,
+        message: `Added new channel: ${channelInfo.title} (${handle})`,
         metadata: { channelId, channelName: channelInfo.title },
+      });
+
+      // Start automatic video importing process
+      videoProcessingService.startChannelProcessing(newChannel.id, false).catch(error => {
+        console.error(`Auto-import failed for channel ${newChannel.id}:`, error);
       });
 
       res.json(newChannel);
