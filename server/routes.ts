@@ -100,6 +100,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // YouTube disconnect
+  app.post("/api/auth/youtube/disconnect", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Disconnect YouTube account
+      await storage.disconnectYouTube(userId);
+      
+      res.json({ success: true, message: "YouTube account disconnected successfully" });
+    } catch (error) {
+      console.error("YouTube disconnect error:", error);
+      res.status(500).json({ error: "Failed to disconnect YouTube account" });
+    }
+  });
+
   // Dashboard stats
   app.get("/api/stats", requireAuth, async (req: AuthRequest, res) => {
     try {

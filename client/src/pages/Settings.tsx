@@ -12,6 +12,16 @@ import { Settings as SettingsIcon, Youtube, Brain, Shield, Save, CheckCircle } f
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+interface AuthStatus {
+  authenticated: boolean;
+  user: {
+    id: number;
+    username: string;
+    youtubeConnected: boolean;
+    youtubeChannelId: string | null;
+  };
+}
+
 export default function Settings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -20,7 +30,7 @@ export default function Settings() {
     queryKey: ["/api/automation/settings"],
   });
 
-  const { data: authStatus } = useQuery({
+  const { data: authStatus } = useQuery<AuthStatus>({
     queryKey: ["/api/auth/status"],
   });
 
@@ -34,11 +44,12 @@ export default function Settings() {
   // Update form data when settings load
   useEffect(() => {
     if (settings) {
+      const s = settings as any;
       setFormData({
-        delayMinutes: (settings as any).delayMinutes || 10,
-        maxCommentsPerDay: (settings as any).maxCommentsPerDay || 100,
-        aiPrompt: (settings as any).aiPrompt || "",
-        isActive: (settings as any).isActive || false,
+        delayMinutes: s.delayMinutes || 10,
+        maxCommentsPerDay: s.maxCommentsPerDay || 100,
+        aiPrompt: s.aiPrompt || "",
+        isActive: s.isActive || false,
       });
     }
   }, [settings]);
@@ -123,6 +134,29 @@ export default function Settings() {
     }
   };
 
+  const handleYouTubeDisconnect = async () => {
+    try {
+      const response = await apiRequest("POST", "/api/auth/youtube/disconnect");
+      
+      if (response.ok) {
+        // Refresh auth status
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
+        toast({
+          title: "Success",
+          description: "YouTube account disconnected successfully",
+        });
+      } else {
+        throw new Error("Failed to disconnect");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to disconnect YouTube account",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <>
@@ -180,30 +214,44 @@ export default function Settings() {
                 <div>
                   <p className="font-medium text-foreground">Connection Status</p>
                   <p className="text-sm text-muted-foreground">
-                    {authStatus?.authenticated && authStatus?.user?.youtubeToken ? "Connected to your YouTube account" : "Not connected"}
+                    {authStatus?.authenticated && authStatus?.user?.youtubeConnected ? "Connected to your YouTube account" : "Not connected"}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    authStatus?.authenticated && authStatus?.user?.youtubeToken ? "bg-green-500" : "bg-red-500"
+                    authStatus?.authenticated && authStatus?.user?.youtubeConnected ? "bg-green-500" : "bg-red-500"
                   }`}></div>
                   <span className={`text-sm font-medium ${
-                    authStatus?.authenticated && authStatus?.user?.youtubeToken ? "text-green-600" : "text-red-600"
+                    authStatus?.authenticated && authStatus?.user?.youtubeConnected ? "text-green-600" : "text-red-600"
                   }`}>
-                    {authStatus?.authenticated && authStatus?.user?.youtubeToken ? "Connected" : "Disconnected"}
+                    {authStatus?.authenticated && authStatus?.user?.youtubeConnected ? "Connected" : "Disconnected"}
                   </span>
                 </div>
               </div>
 
-              {authStatus?.authenticated && authStatus?.user?.youtubeToken ? (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-green-800 font-medium">YouTube account connected successfully</span>
+              {authStatus?.authenticated && authStatus?.user?.youtubeConnected ? (
+                <div className="space-y-3">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="text-green-800 font-medium">YouTube account connected successfully</span>
+                    </div>
+                    <p className="text-sm text-green-700 mt-1">
+                      Ready for video processing and automation
+                    </p>
+                    {authStatus?.user?.youtubeChannelId && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Channel ID: {authStatus.user.youtubeChannelId}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-sm text-green-700 mt-1">
-                    Ready for video processing and automation
-                  </p>
+                  <Button 
+                    onClick={handleYouTubeDisconnect}
+                    variant="outline"
+                    className="w-full border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    Disconnect YouTube Account
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-3">

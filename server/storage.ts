@@ -13,6 +13,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserTokens(id: number, accessToken: string, refreshToken: string, channelId: string): Promise<void>;
+  disconnectYouTube(id: number): Promise<void>;
 
   // Channel methods
   getAllChannels(): Promise<Channel[]>;
@@ -96,6 +97,17 @@ export class DatabaseStorage implements IStorage {
         youtubeToken: accessToken,
         youtubeRefreshToken: refreshToken,
         youtubeChannelId: channelId,
+      })
+      .where(eq(users.id, id));
+  }
+
+  async disconnectYouTube(id: number): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        youtubeToken: null,
+        youtubeRefreshToken: null,
+        youtubeChannelId: null,
       })
       .where(eq(users.id, id));
   }
