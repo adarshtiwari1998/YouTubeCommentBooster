@@ -65,13 +65,14 @@ export class VideoProcessingService {
       let pageCount = 0;
 
       do {
-        const videos = await youtubeService.getChannelVideos(channel.channelId, 50, nextPageToken);
-        if (!videos || videos.length === 0) break;
+        const result = await youtubeService.getChannelVideos(channel.channelId, 50, nextPageToken);
+        if (!result || !result.videos || result.videos.length === 0) break;
         
-        allVideos = allVideos.concat(videos);
+        allVideos = allVideos.concat(result.videos);
+        nextPageToken = result.nextPageToken;
         
         // Save videos in batches
-        for (const video of videos) {
+        for (const video of result.videos) {
           if (!video.id) continue;
           
           const existingVideo = await storage.getVideo(video.id);
@@ -93,9 +94,8 @@ export class VideoProcessingService {
         }
 
         pageCount++;
-        await this.logProcessing(channelId, null, 'fetch_progress', 'info', `Fetched page ${pageCount}, total videos: ${allVideos.length}`);
+        await this.logProcessing(channelId, null, 'fetch_progress', 'info', `Fetched page ${pageCount}, videos this page: ${result.videos.length}, total: ${allVideos.length}`);
         
-        nextPageToken = (videos as any).nextPageToken || '';
       } while (nextPageToken && pageCount < 25); // Increased limit to fetch more videos (up to 1250 videos)
 
       // Update channel statistics

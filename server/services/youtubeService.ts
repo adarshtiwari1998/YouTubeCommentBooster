@@ -146,7 +146,7 @@ export class YouTubeService {
     }
   }
 
-  async getChannelVideos(channelId: string, maxResults = 50, pageToken?: string): Promise<YouTubeVideo[]> {
+  async getChannelVideos(channelId: string, maxResults = 50, pageToken?: string): Promise<{ videos: YouTubeVideo[], nextPageToken: string | null }> {
     try {
       return await this.apiKeyManager.executeWithRetry(async (apiKey) => {
         // First, get the channel's uploads playlist ID
@@ -166,20 +166,20 @@ export class YouTubeService {
           throw new Error('Channel uploads playlist not found');
         }
 
-        // Now get ALL videos from the uploads playlist (includes Shorts)
+        // Now get videos from the uploads playlist (includes Shorts)
         const response = await youtube.playlistItems.list({
           key: apiKey,
           part: ['snippet'],
           playlistId: uploadsPlaylistId,
           maxResults: maxResults,
-          pageToken: pageToken,
+          pageToken: pageToken || undefined,
         });
 
         if (!response.data.items) {
-          return [];
+          return { videos: [], nextPageToken: null };
         }
 
-        return response.data.items
+        const videos = response.data.items
           .filter(item => item.snippet?.resourceId?.videoId)
           .map(item => ({
             id: item.snippet!.resourceId!.videoId!,
@@ -187,6 +187,11 @@ export class YouTubeService {
             publishedAt: item.snippet!.publishedAt || '',
             channelId: item.snippet!.videoOwnerChannelId || channelId,
           }));
+
+        return { 
+          videos, 
+          nextPageToken: response.data.nextPageToken || null 
+        };
       });
     } catch (error) {
       console.error('Error fetching channel videos:', error);

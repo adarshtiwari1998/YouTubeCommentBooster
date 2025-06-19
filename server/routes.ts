@@ -26,9 +26,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user.youtubeToken) {
         try {
           youtubeService.setCredentials(req.user.youtubeToken, req.user.youtubeRefreshToken);
-          youtubeAccount = await youtubeService.getChannelInfo("mine");
+          const userChannelId = await youtubeService.getUserChannelId();
+          if (userChannelId) {
+            youtubeAccount = await youtubeService.getChannelInfo(userChannelId);
+          }
         } catch (error) {
           console.error("Error fetching YouTube account details:", error);
+          // If we have the user's channel ID stored, use that as fallback
+          if (req.user.youtubeChannelId) {
+            // Try to get channel info from our database
+            const channel = await storage.getChannelByChannelId(req.user.youtubeChannelId);
+            if (channel) {
+              youtubeAccount = { 
+                id: req.user.youtubeChannelId,
+                snippet: { 
+                  title: channel.name,
+                  thumbnails: {
+                    default: { url: channel.thumbnailUrl }
+                  }
+                }
+              };
+            } else {
+              youtubeAccount = { 
+                id: req.user.youtubeChannelId,
+                snippet: { title: 'Connected Channel' }
+              };
+            }
+          }
         }
       }
 
