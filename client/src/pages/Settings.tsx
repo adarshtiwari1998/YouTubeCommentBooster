@@ -135,7 +135,7 @@ export default function Settings() {
                 <div>
                   <p className="font-medium text-foreground">Connection Status</p>
                   <p className="text-sm text-muted-foreground">
-                    {authStatus?.user?.youtubeConnected ? `Connected as ${authStatus.user.youtubeChannelId || "@adarshtripathi5520"}` : "Not connected"}
+                    {authStatus?.user?.youtubeConnected ? "Connected to your YouTube account" : "Not connected"}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">

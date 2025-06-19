@@ -6,6 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/Dashboard";
 import Channels from "@/pages/Channels";
 import Settings from "@/pages/Settings";
+import Automation from "@/pages/Automation";
+import Comments from "@/pages/Comments";
+import Analytics from "@/pages/Analytics";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/Sidebar";
 
@@ -18,6 +21,9 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/channels" component={Channels} />
+          <Route path="/automation" component={Automation} />
+          <Route path="/comments" component={Comments} />
+          <Route path="/analytics" component={Analytics} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
