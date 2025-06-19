@@ -116,6 +116,7 @@ This is a full-stack YouTube automation application built with React (TypeScript
 ## Changelog
 - June 19, 2025. Initial setup
 - June 19, 2025. Successfully migrated from Replit Agent to Replit environment. Fixed navigation routing issues for ProcessChannel and ChannelAnalytics components. Updated client-side routing to use proper wouter navigation instead of window.location.
+- June 19, 2025. Fixed critical channel deletion cascade issues, "Invalid Date" display bugs, and implemented comprehensive import progress tracking. Added scrollable channel analytics page with improved video count clarity and status indicators. Resolved foreign key constraint violations in activity logs deletion.
 
 ## User Preferences
 

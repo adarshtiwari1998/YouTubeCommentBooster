@@ -88,7 +88,7 @@ export default function ChannelAnalytics() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 min-h-screen overflow-y-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/">
@@ -116,13 +116,13 @@ export default function ChannelAnalytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Videos</CardTitle>
+            <CardTitle className="text-sm font-medium">Imported Videos</CardTitle>
             <Play className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalVideos}</div>
             <p className="text-xs text-muted-foreground">
-              {processedVideos} processed
+              of {channel.totalVideos || totalVideos} total on channel
             </p>
           </CardContent>
         </Card>
@@ -155,13 +155,20 @@ export default function ChannelAnalytics() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium">Status</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingVideos}</div>
+            <div className="text-2xl font-bold">
+              <Badge 
+                variant={channel.status === 'fetched' ? 'default' : 'secondary'}
+                className="text-sm"
+              >
+                {channel.status || 'Unknown'}
+              </Badge>
+            </div>
             <p className="text-xs text-muted-foreground">
-              Videos waiting processing
+              {pendingVideos} pending videos
             </p>
           </CardContent>
         </Card>
@@ -176,20 +183,22 @@ export default function ChannelAnalytics() {
           {logsLoading ? (
             <div>Loading processing logs...</div>
           ) : processingLogs.length > 0 ? (
-            <div className="space-y-4">
-              {processingLogs.slice(0, 10).map((log: any, index: number) => (
-                <div key={index} className="flex items-center gap-4 p-3 border rounded-lg">
-                  <div className={`w-3 h-3 rounded-full ${getStatusColor(log.status)}`} />
-                  <div className="flex-1">
-                    <p className="font-medium">{log.stage}</p>
-                    <p className="text-sm text-muted-foreground">{log.message}</p>
+            <div className="max-h-96 overflow-y-auto">
+              <div className="space-y-4">
+                {processingLogs.slice(0, 20).map((log: any, index: number) => (
+                  <div key={index} className="flex items-center gap-4 p-3 border rounded-lg">
+                    <div className={`w-3 h-3 rounded-full ${getStatusColor(log.status)}`} />
+                    <div className="flex-1">
+                      <p className="font-medium">{log.stage}</p>
+                      <p className="text-sm text-muted-foreground">{log.message}</p>
+                    </div>
+                    <Badge variant="outline">{log.status}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {log.createdAt ? new Date(log.createdAt).toLocaleTimeString() : 'Unknown time'}
+                    </span>
                   </div>
-                  <Badge variant="outline">{log.status}</Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(log.createdAt).toLocaleTimeString()}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           ) : (
             <p className="text-muted-foreground">No processing logs available</p>
