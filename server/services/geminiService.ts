@@ -7,7 +7,7 @@ export class GeminiService {
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || '';
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   }
 
   async generateComment(videoTitle: string, videoDescription: string, customPrompt: string): Promise<string> {
