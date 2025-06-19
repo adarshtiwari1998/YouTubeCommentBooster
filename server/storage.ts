@@ -5,7 +5,7 @@ import {
   type ActivityLog, type InsertActivityLog, type ApiQuota
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -335,6 +335,106 @@ export class DatabaseStorage implements IStorage {
       commentsToday,
       successRate: Math.round(successRate * 10) / 10,
     };
+  }
+
+  // Video processing methods implementation
+  async updateChannel(id: number, updates: any): Promise<void> {
+    await db.update(channels).set(updates).where(eq(channels.id, id));
+  }
+
+  async updateVideoEngagement(videoId: string, updates: any): Promise<void> {
+    await db.update(videos).set(updates).where(eq(videos.videoId, videoId));
+  }
+
+  async updateVideoProcessingStage(videoId: string, stage: string): Promise<void> {
+    await db.update(videos).set({ processingStage: stage }).where(eq(videos.videoId, videoId));
+  }
+
+  async getVideosNeedingAction(channelId?: number): Promise<Video[]> {
+    const query = db.select().from(videos).where(
+      and(
+        channelId ? eq(videos.channelId, channelId) : undefined,
+        or(
+          eq(videos.needsComment, true),
+          eq(videos.needsLike, true)
+        )
+      )
+    );
+    return await query;
+  }
+
+  async addToVideoQueue(item: any): Promise<void> {
+    await db.execute(sql`
+      INSERT INTO video_queue (video_id, channel_id, action, priority, scheduled_at, status)
+      VALUES (${item.videoId}, ${item.channelId}, ${item.action}, ${item.priority}, NOW(), 'pending')
+    `);
+  }
+
+  async getPendingQueueItems(channelId?: number): Promise<any[]> {
+    const result = await db.execute(sql`
+      SELECT * FROM video_queue 
+      WHERE status = 'pending' 
+      ${channelId ? sql`AND channel_id = ${channelId}` : sql``}
+      ORDER BY priority, scheduled_at
+    `);
+    return result.rows as any[];
+  }
+
+  async updateQueueItemStatus(id: number, status: string, errorMessage?: string): Promise<void> {
+    await db.execute(sql`
+      UPDATE video_queue 
+      SET status = ${status}, 
+          processed_at = ${status === 'completed' ? new Date() : null},
+          error_message = ${errorMessage || null}
+      WHERE id = ${id}
+    `);
+  }
+
+  async incrementQueueItemAttempts(id: number): Promise<void> {
+    await db.execute(sql`
+      UPDATE video_queue 
+      SET attempts = attempts + 1
+      WHERE id = ${id}
+    `);
+  }
+
+  async getCompletedVideosCount(channelId: number): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(videos)
+      .where(and(
+        eq(videos.channelId, channelId),
+        eq(videos.processingStage, 'completed')
+      ));
+    return result[0].count;
+  }
+
+  async getActiveChannels(): Promise<Channel[]> {
+    return await db.select().from(channels).where(eq(channels.isActive, true));
+  }
+
+  async getLatestVideoForChannel(channelId: number): Promise<Video | undefined> {
+    const result = await db.select().from(videos)
+      .where(eq(videos.channelId, channelId))
+      .orderBy(desc(videos.publishedAt))
+      .limit(1);
+    return result[0];
+  }
+
+  async createProcessingLog(log: any): Promise<void> {
+    await db.execute(sql`
+      INSERT INTO processing_logs (channel_id, video_id, stage, status, message, metadata, created_at)
+      VALUES (${log.channelId}, ${log.videoId}, ${log.stage}, ${log.status}, ${log.message}, ${JSON.stringify(log.metadata || {})}, NOW())
+    `);
+  }
+
+  async getProcessingLogs(channelId?: number, limit = 50): Promise<any[]> {
+    const result = await db.execute(sql`
+      SELECT * FROM processing_logs 
+      ${channelId ? sql`WHERE channel_id = ${channelId}` : sql``}
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `);
+    return result.rows as any[];
   }
 }
 

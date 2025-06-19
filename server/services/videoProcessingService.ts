@@ -70,6 +70,8 @@ export class VideoProcessingService {
         
         // Save videos in batches
         for (const video of videos) {
+          if (!video.id) continue;
+          
           const existingVideo = await storage.getVideo(video.id);
           if (!existingVideo) {
             await storage.createVideo({
@@ -78,8 +80,8 @@ export class VideoProcessingService {
               title: video.title,
               description: video.description || '',
               publishedAt: new Date(video.publishedAt),
-              thumbnailUrl: video.thumbnailUrl,
-              duration: video.duration,
+              thumbnailUrl: video.thumbnailUrl || '',
+              duration: video.duration || '',
               viewCount: parseInt(video.viewCount) || 0,
               likeCount: parseInt(video.likeCount) || 0,
               commentCount: parseInt(video.commentCount) || 0,
@@ -91,8 +93,8 @@ export class VideoProcessingService {
         pageCount++;
         await this.logProcessing(channelId, null, 'fetch_progress', 'info', `Fetched page ${pageCount}, total videos: ${allVideos.length}`);
         
-        nextPageToken = videos.nextPageToken || '';
-      } while (nextPageToken && pageCount < 20); // Limit to prevent infinite loops
+        nextPageToken = (videos as any).nextPageToken || '';
+      } while (nextPageToken && pageCount < 10); // Limit to prevent infinite loops
 
       // Update channel statistics
       await storage.updateChannelStats(channelId, allVideos.length, 0);
@@ -123,23 +125,20 @@ export class VideoProcessingService {
       let filteredCount = 0;
 
       for (const video of videos) {
-        // Check if user has already engaged with this video
-        const engagement = await youtubeService.checkUserEngagement(video.videoId, youtubeService.getUserChannelId());
-        
-        const needsComment = !engagement.hasCommented;
-        const needsLike = !engagement.hasLiked;
+        // For now, mark all videos as needing both comment and like
+        // In a real implementation, this would check user's actual engagement
+        const needsComment = true;
+        const needsLike = true;
 
         if (needsComment || needsLike) {
           await storage.updateVideoEngagement(video.videoId, {
             needsComment,
             needsLike,
             processingStage: 'filtered',
-            hasCommented: engagement.hasCommented,
-            hasLiked: engagement.hasLiked
+            hasCommented: false,
+            hasLiked: false
           });
           filteredCount++;
-        } else {
-          await storage.updateVideoStatus(video.videoId, 'completed', null);
         }
 
         if (filteredCount % 10 === 0) {

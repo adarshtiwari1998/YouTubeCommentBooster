@@ -46,7 +46,8 @@ export class YouTubeService {
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
-      prompt: 'consent'
+      prompt: 'consent',
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI || `${process.env.REPLIT_DEV_DOMAIN}/api/auth/youtube/callback`
     });
   }
 
@@ -79,7 +80,7 @@ export class YouTubeService {
     }
   }
 
-  async getChannelVideos(channelId: string, maxResults = 50): Promise<YouTubeVideo[]> {
+  async getChannelVideos(channelId: string, maxResults = 50, pageToken?: string): Promise<YouTubeVideo[]> {
     try {
       const response = await youtube.search.list({
         key: this.apiKey,
@@ -88,22 +89,39 @@ export class YouTubeService {
         type: ['video'],
         order: 'date',
         maxResults: maxResults,
+        pageToken: pageToken,
       });
 
       if (!response.data.items) {
         return [];
       }
 
-      return response.data.items.map(item => ({
+      const videos = response.data.items.map(item => ({
         id: item.id?.videoId || '',
         title: item.snippet?.title || '',
         publishedAt: item.snippet?.publishedAt || '',
         channelId: item.snippet?.channelId || '',
+        description: item.snippet?.description || '',
+        thumbnailUrl: item.snippet?.thumbnails?.medium?.url || '',
+        duration: '',
+        viewCount: '0',
+        likeCount: '0',
+        commentCount: '0'
       }));
+
+      // Add nextPageToken to result for pagination
+      (videos as any).nextPageToken = response.data.nextPageToken;
+      
+      return videos;
     } catch (error) {
       console.error('Error fetching channel videos:', error);
       throw error;
     }
+  }
+
+  getUserChannelId(): string {
+    // Return placeholder for now
+    return 'user_channel_id';
   }
 
   async getUserCommentOnVideo(videoId: string, userChannelId: string): Promise<YouTubeComment | null> {

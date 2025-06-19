@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { youtubeService } from "./services/youtubeService";
 import { geminiService } from "./services/geminiService";
 import { automationService } from "./services/automationService";
+import { videoProcessingService } from "./services/videoProcessingService";
 import { requireAuth, requireYouTubeAuth, type AuthRequest } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -26,7 +27,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/auth/callback", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/auth/youtube/callback", requireAuth, async (req: AuthRequest, res) => {
     try {
       const { code } = req.query;
       if (!code || typeof code !== 'string') {
@@ -135,23 +136,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/channels", requireAuth, async (req: AuthRequest, res) => {
     try {
       const channels = await storage.getAllChannels();
-      const channelsWithProgress = await Promise.all(
-        channels.map(async (channel) => {
-          const videos = await storage.getVideosByChannelId(channel.id);
-          const progress = (channel.totalVideos || 0) > 0 
-            ? Math.round(((channel.processedVideos || 0) / (channel.totalVideos || 0)) * 100)
-            : 0;
-          
-          return {
-            ...channel,
-            progress,
-            pendingVideos: (channel.totalVideos || 0) - (channel.processedVideos || 0),
-          };
-        })
-      );
       
-      res.json(channelsWithProgress);
+      // Auto-start fetching for new channels
+      for (const channel of channels) {
+        if (!channel.fetchingComplete && channel.status === 'pending') {
+          videoProcessingService.startChannelProcessing(channel.id, false).catch(error => {
+            console.error(`Auto-fetch failed for channel ${channel.id}:`, error);
+          });
+        }
+      }
+      
+      res.json(channels);
     } catch (error) {
+      console.error("Get channels error:", error);
       res.status(500).json({ error: "Failed to fetch channels" });
     }
   });
@@ -438,7 +435,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         youtubeService.setCredentials(req.user.youtubeToken, req.user.youtubeRefreshToken);
       }
       
-      videoProcessingService.startChannelProcessing(channelId, isAuthenticated);
+      // Start processing in background
+      videoProcessingService.startChannelProcessing(channelId, isAuthenticated).catch(error => {
+        console.error(`Background processing failed for channel ${channelId}:`, error);
+      });
       
       res.json({ 
         success: true, 

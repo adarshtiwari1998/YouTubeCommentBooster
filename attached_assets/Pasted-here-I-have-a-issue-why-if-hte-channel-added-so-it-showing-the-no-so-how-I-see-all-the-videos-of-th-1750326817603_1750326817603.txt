@@ -1,0 +1,43 @@
+here I have a issue why if hte channel added so it showing the no
+so how I see all the videos of that channel
+
+means
+
+suppose I am not authenticated my id yet so what you do if the channel added so what you do start fetching the video
+
+so once it all fetch in batch
+
+so create a table where I show each channel videos and then if I authenticated then start filtering process check in which videi id I dont comment yet and also chekc like
+
+then what you do once filteration dont fitler out that videos only in a second table of those comments and likes are pending and if likes already done but comment not done
+
+so meaans once you seggreate that video id then start the automation flow
+
+you can do this one by one if one channel completed then start the another channel
+
+but make sure
+
+the flow is
+
+if I added the channel and if I not authenticated so add the column also autheicated or not authenticated so start the fetching process once fetching done.
+so show some message that all videos fetched
+
+then if I autheintcated check real time then what you do check the authenticated state if there are success then start the filtering and seggregation process
+
+make sure show this all seggregation and filtering process in timeline or you can add logs also in frontend so admin can see the rela itme preview what happend in background
+
+so once dont so I wna to show that also how many videos id of that channel I already comment it, liked it
+
+or how many videos id comment are pending, liked are oenidng
+
+ir if liked done so how maby comment pending, or if comemnt done if liked not done so show this data also
+
+then you create a table for that seggregated videos id then start the comment liked automation system one by one so chekc the interval set in between them so once it done one by one add the status also in that table column
+
+so once all done of that particaluar channle the what you do start for 2nd channel if they are added by the admin
+
+so for 2nd channel same flow
+
+but it is very important to check for any new videos uploaded to that channel if they are uploaded so check this in interval itme of 1 hour
+
+if there are any videos there ot that channel fetch this and start the autommation

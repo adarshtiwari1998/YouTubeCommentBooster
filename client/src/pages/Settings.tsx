@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings as SettingsIcon, Youtube, Brain, Shield, Save } from "lucide-react";
+import { Settings as SettingsIcon, Youtube, Brain, Shield, Save, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -135,29 +135,46 @@ export default function Settings() {
                 <div>
                   <p className="font-medium text-foreground">Connection Status</p>
                   <p className="text-sm text-muted-foreground">
-                    {authStatus?.user?.youtubeConnected ? "Connected to your YouTube account" : "Not connected"}
+                    {authStatus?.authenticated && authStatus?.user?.youtubeToken ? "Connected to your YouTube account" : "Not connected"}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    authStatus?.user?.youtubeConnected ? "bg-green-500" : "bg-red-500"
+                    authStatus?.authenticated && authStatus?.user?.youtubeToken ? "bg-green-500" : "bg-red-500"
                   }`}></div>
                   <span className={`text-sm font-medium ${
-                    authStatus?.user?.youtubeConnected ? "text-green-600" : "text-red-600"
+                    authStatus?.authenticated && authStatus?.user?.youtubeToken ? "text-green-600" : "text-red-600"
                   }`}>
-                    {authStatus?.user?.youtubeConnected ? "Connected" : "Disconnected"}
+                    {authStatus?.authenticated && authStatus?.user?.youtubeToken ? "Connected" : "Disconnected"}
                   </span>
                 </div>
               </div>
-              
-              {!authStatus?.user?.youtubeConnected && (
-                <Button
-                  onClick={handleYouTubeAuth}
-                  className="bg-red-500 hover:bg-red-600 text-white"
-                >
-                  <Youtube className="h-4 w-4 mr-2" />
-                  Connect YouTube Account
-                </Button>
+
+              {authStatus?.authenticated && authStatus?.user?.youtubeToken ? (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="text-green-800 font-medium">YouTube account connected successfully</span>
+                  </div>
+                  <p className="text-sm text-green-700 mt-1">
+                    Ready for video processing and automation
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p className="text-sm text-gray-700">
+                      Connect your YouTube account to enable video processing, commenting, and liking automation.
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleYouTubeAuth}
+                    className="bg-red-600 hover:bg-red-700 text-white w-full"
+                  >
+                    <Youtube className="h-4 w-4 mr-2" />
+                    Connect YouTube Account
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, Tv, ChevronRight, Trash2 } from "lucide-react";
+import { RefreshCw, Tv, ChevronRight, Trash2, ExternalLink } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import AddChannelDialog from "./AddChannelDialog";
@@ -136,57 +136,100 @@ export default function ChannelsList() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
-          {channels?.map((channel: any) => (
-            <div key={channel.id} className="p-4 hover:bg-accent/50 transition-colors rounded-lg">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                    <Tv className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-foreground">{channel.name}</h4>
-                    <p className="text-sm text-muted-foreground">{channel.handle}</p>
-                    <div className="flex items-center space-x-4 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        {channel.totalVideos} videos
-                      </span>
-                      <span className="text-xs text-warning">
-                        {channel.pendingVideos} pending
-                      </span>
+        {channels && channels.length > 0 ? (
+          <div className="space-y-4">
+            {channels.map((channel: any) => (
+              <div key={channel.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <Tv className="h-8 w-8 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-foreground">{channel.name}</h3>
+                      <p className="text-sm text-muted-foreground">{channel.handle}</p>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total Videos:</span>
+                          <span className="font-medium">{channel.totalVideos || 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Fetched:</span>
+                          <span className="font-medium text-blue-600">{channel.fetchedVideos || 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Processed:</span>
+                          <span className="font-medium text-green-600">{channel.completedVideos || 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Status:</span>
+                          <span className={`font-medium text-xs px-2 py-1 rounded ${
+                            channel.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                            channel.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                            channel.status === 'fetching' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {channel.status || 'pending'}
+                          </span>
+                        </div>
+                      </div>
+                      <Progress 
+                        value={channel.totalVideos > 0 ? ((channel.completedVideos || 0) / channel.totalVideos) * 100 : 0} 
+                        className="mt-3 h-2"
+                      />
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      channel.status === "processing" ? "bg-warning animate-pulse" : "bg-success"
-                    }`}></div>
-                    <span className={`text-sm ${getStatusColor(channel.status)}`}>
-                      {getStatusText(channel.status)}
-                    </span>
+                  
+                  <div className="flex flex-col space-y-2 ml-4">
+                    <Button
+                      onClick={() => window.location.href = `/process/${channel.id}`}
+                      size="sm" 
+                      className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]"
+                    >
+                      Process Videos
+                    </Button>
+                    <Button
+                      onClick={() => handleSyncChannel(channel.id)}
+                      variant="outline"
+                      size="sm"
+                      className="min-w-[120px]"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Sync
+                    </Button>
+                    <Button
+                      onClick={() => window.open(`https://youtube.com/${channel.handle}`, '_blank')}
+                      variant="outline"
+                      size="sm"
+                      className="min-w-[120px]"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Channel
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteChannel(channel.id)}
+                      variant="destructive"
+                      size="sm"
+                      className="min-w-[120px]"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
                   </div>
-                  <Button
-                    onClick={() => handleSyncChannel(channel.id)}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
-              
-              {/* Progress bar */}
-              <div>
-                <div className="flex items-center justify-between text-sm text-muted-foreground mb-1">
-                  <span>Progress</span>
-                  <span>{channel.progress}%</span>
-                </div>
-                <Progress value={channel.progress} className="h-2" />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Tv className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No channels added yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Add your first YouTube channel to start automating comments and likes
+            </p>
+            <AddChannelDialog />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
