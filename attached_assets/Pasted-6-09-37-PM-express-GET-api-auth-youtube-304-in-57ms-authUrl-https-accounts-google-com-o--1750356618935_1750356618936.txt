@@ -1,0 +1,99 @@
+6:09:37 PM [express] GET /api/auth/youtube 304 in 57ms :: {"authUrl":"https://accounts.google.com/o/…
+Error getting channel info: GaxiosError: The request cannot be completed because you have exceeded your <a href="/youtube/v3/getting-started#quota">quota</a>.
+    at Gaxios._request (/home/runner/workspace/node_modules/gaxios/src/gaxios.ts:211:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async OAuth2Client.requestAsync (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/oauth2client.js:463:20)
+    at async createAPIRequestAsync (/home/runner/workspace/node_modules/googleapis-common/build/src/apirequest.js:308:25)
+    at async YouTubeService.getChannelInfo (/home/runner/workspace/server/services/youtubeService.ts:235:26)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:87:31) {
+  config: {
+    url: URL {
+      href: 'https://youtube.googleapis.com/youtube/v3/channels?part=snippet&part=statistics&mine=true',
+      origin: 'https://youtube.googleapis.com',
+      protocol: 'https:',
+      username: '',
+      password: '',
+      host: 'youtube.googleapis.com',
+      hostname: 'youtube.googleapis.com',
+      port: '',
+      pathname: '/youtube/v3/channels',
+      search: '?part=snippet&part=statistics&mine=true',
+      searchParams: URLSearchParams { 'part' => 'snippet', 'part' => 'statistics', 'mine' => 'true' },
+      hash: ''
+    },
+    method: 'GET',
+    apiVersion: '',
+    userAgentDirectives: [ [Object] ],
+    paramsSerializer: [Function (anonymous)],
+    headers: Headers {
+      'accept-encoding': 'gzip',
+      authorization: '<<REDACTED> - See `errorRedactor` option in `gaxios` for configuration>.',
+      'user-agent': 'google-api-nodejs-client/8.0.2-rc.0 (gzip)',
+      'x-goog-api-client': 'gdcl/8.0.2-rc.0 gl-node/20.18.1'
+    },
+    params: { part: [Array], mine: true },
+    validateStatus: [Function (anonymous)],
+    retry: true,
+    responseType: 'unknown',
+    errorRedactor: [Function: defaultErrorRedactor],
+    retryConfig: {
+      currentRetryAttempt: 0,
+      retry: 3,
+      httpMethodsToRetry: [Array],
+      noResponseRetries: 2,
+      retryDelayMultiplier: 2,
+      timeOfFirstRequest: 1750356590338,
+      totalTimeout: 9007199254740991,
+      maxRetryDelay: 9007199254740991,
+      statusCodesToRetry: [Array]
+    }
+  },
+  response: Response {
+    size: 0,
+    data: { error: [Object] },
+    config: {
+      url: URL {},
+      method: 'GET',
+      apiVersion: '',
+      userAgentDirectives: [Array],
+      paramsSerializer: [Function (anonymous)],
+      headers: Headers {
+        'accept-encoding': 'gzip',
+        authorization: '<<REDACTED> - See `errorRedactor` option in `gaxios` for configuration>.',
+        'user-agent': 'google-api-nodejs-client/8.0.2-rc.0 (gzip)',
+        'x-goog-api-client': 'gdcl/8.0.2-rc.0 gl-node/20.18.1'
+      },
+      params: [Object],
+      validateStatus: [Function (anonymous)],
+      retry: true,
+      responseType: 'unknown',
+      errorRedactor: [Function: defaultErrorRedactor]
+    },
+    [Symbol(Body internals)]: {
+      body: [Gunzip],
+      stream: [Gunzip],
+      boundary: null,
+      disturbed: true,
+      error: null
+    },
+    [Symbol(Response internals)]: {
+      type: 'default',
+      url: 'https://youtube.googleapis.com/youtube/v3/channels?part=snippet&part=statistics&mine=true',
+      status: 403,
+      statusText: 'Forbidden',
+      headers: [Object],
+      counter: 0,
+      highWaterMark: 16384
+    }
+  },
+  code: 403,
+  status: 403,
+  error: undefined,
+  [Symbol(gaxios-gaxios-error)]: '7.1.0',
+  [cause]: {
+    message: 'The request cannot be completed because you have exceeded your <a href="/youtube/v3/getting-started#quota">quota</a>.',
+    code: 403,
+    status: 'Forbidden',
+    errors: [ [Object] ]
+  }
+}

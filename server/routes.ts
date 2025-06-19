@@ -84,23 +84,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tokens = await youtubeService.exchangeCodeForTokens(code as string);
       youtubeService.setCredentials(tokens.access_token, tokens.refresh_token);
       
-      const userChannelInfo = await youtubeService.getChannelInfo("mine");
+      let userChannelInfo;
+      let channelId = 'unknown';
       
-      if (!userChannelInfo) {
-        return res.status(400).json({ error: "Unable to fetch YouTube channel information" });
+      try {
+        userChannelInfo = await youtubeService.getChannelInfo("mine");
+        channelId = userChannelInfo?.id || 'unknown';
+      } catch (error: any) {
+        // If quota exceeded on OAuth, we'll still save the tokens but skip channel info
+        console.log('OAuth quota limit reached during authentication, tokens saved without channel info');
+        if (error.code === 403 && error.message?.includes('quota')) {
+          // Continue with authentication but without channel details
+          channelId = 'pending_quota_reset';
+        } else {
+          return res.status(400).json({ error: "Unable to fetch YouTube channel information" });
+        }
       }
 
       await storage.updateUserTokens(
         req.user.id,
         tokens.access_token,
         tokens.refresh_token,
-        userChannelInfo.id || 'unknown'
+        channelId
       );
 
       await storage.createActivityLog({
         type: "info",
-        message: `YouTube authentication successful for channel: ${userChannelInfo.title}`,
-        metadata: { channelId: userChannelInfo.id, channelName: userChannelInfo.title },
+        message: userChannelInfo ? 
+          `YouTube authentication successful for channel: ${userChannelInfo.title}` :
+          `YouTube authentication successful - tokens saved (quota limit reached)`,
+        metadata: userChannelInfo ? 
+          { channelId: userChannelInfo.id, channelName: userChannelInfo.title } :
+          { channelId: channelId, status: "quota_limited" },
       });
 
       res.redirect("/settings?auth=success");

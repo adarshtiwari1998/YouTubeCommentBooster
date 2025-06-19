@@ -19,7 +19,8 @@ export interface YouTubeComment {
 
 export class YouTubeService {
   private apiKeyManager: ApiKeyManager;
-  private oauth2Client: any;
+  private oauth2Clients: any[];
+  private currentOAuthIndex: number = 0;
 
   constructor() {
     // Initialize API key manager with environment variable
@@ -30,15 +31,51 @@ export class YouTubeService {
     const baseUrl = process.env.REPLIT_DOMAINS || 'http://localhost:5000';
     const redirectUri = `${baseUrl}/api/auth/youtube/callback`;
     
-    this.oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      redirectUri
-    );
+    // Initialize multiple OAuth clients
+    this.oauth2Clients = [];
+    
+    // Primary OAuth client
+    if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+      this.oauth2Clients.push(new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        redirectUri
+      ));
+    }
+    
+    // Additional OAuth clients (if configured)
+    for (let i = 2; i <= 5; i++) {
+      const clientId = process.env[`GOOGLE_CLIENT_ID_${i}`];
+      const clientSecret = process.env[`GOOGLE_CLIENT_SECRET_${i}`];
+      
+      if (clientId && clientSecret) {
+        this.oauth2Clients.push(new google.auth.OAuth2(
+          clientId,
+          clientSecret,
+          redirectUri
+        ));
+        console.log(`Configured OAuth client ${i}`);
+      }
+    }
+    
+    console.log(`Configured ${this.oauth2Clients.length} OAuth clients for authentication`);
+  }
+
+  private getCurrentOAuthClient() {
+    if (this.oauth2Clients.length === 0) {
+      throw new Error('No OAuth clients configured');
+    }
+    return this.oauth2Clients[this.currentOAuthIndex];
+  }
+
+  private switchToNextOAuthClient() {
+    this.currentOAuthIndex = (this.currentOAuthIndex + 1) % this.oauth2Clients.length;
+    console.log(`Switched to OAuth client ${this.currentOAuthIndex + 1}/${this.oauth2Clients.length}`);
   }
 
   setCredentials(accessToken: string, refreshToken: string) {
-    this.oauth2Client.setCredentials({
+    const currentClient = this.getCurrentOAuthClient();
+    currentClient.setCredentials({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
@@ -50,16 +87,38 @@ export class YouTubeService {
       'https://www.googleapis.com/auth/youtube.force-ssl'
     ];
 
-    return this.oauth2Client.generateAuthUrl({
+    const currentClient = this.getCurrentOAuthClient();
+    const authUrl = currentClient.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
       prompt: 'consent',
     });
+    
+    console.log('Generated auth URL:', authUrl);
+    return authUrl;
   }
 
   async exchangeCodeForTokens(code: string) {
-    const { tokens } = await this.oauth2Client.getToken(code);
-    return tokens;
+    const maxRetries = this.oauth2Clients.length;
+    let lastError: any;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const currentClient = this.getCurrentOAuthClient();
+        const { tokens } = await currentClient.getToken(code);
+        console.log(`OAuth token exchange successful with client ${this.currentOAuthIndex + 1}`);
+        return tokens;
+      } catch (error: any) {
+        lastError = error;
+        console.log(`OAuth token exchange failed with client ${this.currentOAuthIndex + 1}:`, error.message);
+        
+        if (attempt < maxRetries - 1) {
+          this.switchToNextOAuthClient();
+        }
+      }
+    }
+
+    throw lastError;
   }
 
   async getChannelIdFromHandle(handle: string): Promise<string | null> {
@@ -137,8 +196,9 @@ export class YouTubeService {
 
   async getUserChannelId(): Promise<string> {
     try {
+      const currentClient = this.getCurrentOAuthClient();
       const response = await youtube.channels.list({
-        auth: this.oauth2Client,
+        auth: currentClient,
         part: ['id'],
         mine: true,
       });
@@ -191,8 +251,9 @@ export class YouTubeService {
 
   async postComment(videoId: string, commentText: string): Promise<boolean> {
     try {
+      const currentClient = this.getCurrentOAuthClient();
       await youtube.commentThreads.insert({
-        auth: this.oauth2Client,
+        auth: currentClient,
         part: ['snippet'],
         requestBody: {
           snippet: {
@@ -215,8 +276,9 @@ export class YouTubeService {
 
   async likeVideo(videoId: string): Promise<boolean> {
     try {
+      const currentClient = this.getCurrentOAuthClient();
       await youtube.videos.rate({
-        auth: this.oauth2Client,
+        auth: currentClient,
         id: videoId,
         rating: 'like',
       });
@@ -232,26 +294,46 @@ export class YouTubeService {
     try {
       // Handle special case for "mine" to get authenticated user's channel
       if (channelId === "mine") {
-        const response = await youtube.channels.list({
-          auth: this.oauth2Client,
-          part: ['snippet', 'statistics'],
-          mine: true,
-        });
+        const maxRetries = this.oauth2Clients.length;
+        let lastError: any;
 
-        if (!response.data.items || response.data.items.length === 0) {
-          return null;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          try {
+            const currentClient = this.getCurrentOAuthClient();
+            const response = await youtube.channels.list({
+              auth: currentClient,
+              part: ['snippet', 'statistics'],
+              mine: true,
+            });
+
+            if (!response.data.items || response.data.items.length === 0) {
+              return null;
+            }
+
+            const channel = response.data.items[0];
+            console.log(`OAuth channel info successful with client ${this.currentOAuthIndex + 1}`);
+            return {
+              id: channel.id,
+              title: channel.snippet?.title,
+              description: channel.snippet?.description,
+              thumbnailUrl: channel.snippet?.thumbnails?.medium?.url || channel.snippet?.thumbnails?.high?.url || channel.snippet?.thumbnails?.default?.url,
+              subscriberCount: channel.statistics?.subscriberCount,
+              videoCount: channel.statistics?.videoCount,
+              viewCount: channel.statistics?.viewCount,
+            };
+          } catch (error: any) {
+            lastError = error;
+            console.log(`OAuth channel info failed with client ${this.currentOAuthIndex + 1}:`, error.message);
+            
+            if (error.code === 403 && error.message?.includes('quota') && attempt < maxRetries - 1) {
+              this.switchToNextOAuthClient();
+              continue;
+            }
+            break;
+          }
         }
-
-        const channel = response.data.items[0];
-        return {
-          id: channel.id,
-          title: channel.snippet?.title,
-          description: channel.snippet?.description,
-          thumbnailUrl: channel.snippet?.thumbnails?.medium?.url || channel.snippet?.thumbnails?.high?.url || channel.snippet?.thumbnails?.default?.url,
-          subscriberCount: channel.statistics?.subscriberCount,
-          videoCount: channel.statistics?.videoCount,
-          viewCount: channel.statistics?.viewCount,
-        };
+        
+        throw lastError;
       } else {
         return await this.apiKeyManager.executeWithRetry(async (apiKey) => {
           const response = await youtube.channels.list({
