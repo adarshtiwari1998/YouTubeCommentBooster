@@ -23,9 +23,7 @@ export class YouTubeService {
   constructor() {
     this.apiKey = process.env.YOUTUBE_API_KEY || process.env.GOOGLE_API_KEY || '';
     
-    const redirectUri = process.env.REPLIT_DEV_DOMAIN ? 
-      `${process.env.REPLIT_DEV_DOMAIN}/api/auth/youtube/callback` : 
-      'http://localhost:5000/api/auth/youtube/callback';
+    const redirectUri = `https://de171a89-7c49-420a-8f9e-7586b3f0d832-00-1k6zgqvo2er93.janeway.replit.dev/api/auth/youtube/callback`;
     
     this.oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -47,9 +45,7 @@ export class YouTubeService {
       'https://www.googleapis.com/auth/youtube.force-ssl'
     ];
     
-    const redirectUri = process.env.REPLIT_DEV_DOMAIN ? 
-      `${process.env.REPLIT_DEV_DOMAIN}/api/auth/youtube/callback` : 
-      'http://localhost:5000/api/auth/youtube/callback';
+    const redirectUri = `https://de171a89-7c49-420a-8f9e-7586b3f0d832-00-1k6zgqvo2er93.janeway.replit.dev/api/auth/youtube/callback`;
 
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
@@ -227,6 +223,7 @@ export class YouTubeService {
 
       if (channelId === "mine") {
         requestParams.mine = true;
+        requestParams.auth = this.oauth2Client;
       } else {
         requestParams.id = [channelId];
         requestParams.key = this.apiKey;
