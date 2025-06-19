@@ -19,16 +19,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth routes
 
-  app.get("/api/auth/status", requireAuth, (req: AuthRequest, res) => {
-    res.json({
-      authenticated: true,
-      user: {
-        id: req.user.id,
-        username: req.user.username,
-        youtubeConnected: !!req.user.youtubeToken,
-        youtubeChannelId: req.user.youtubeChannelId,
-      },
-    });
+  app.get("/api/auth/status", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      let youtubeAccount = null;
+      
+      if (req.user.youtubeToken) {
+        try {
+          youtubeService.setCredentials(req.user.youtubeToken, req.user.youtubeRefreshToken);
+          youtubeAccount = await youtubeService.getChannelInfo("mine");
+        } catch (error) {
+          console.error("Error fetching YouTube account details:", error);
+        }
+      }
+
+      res.json({
+        authenticated: true,
+        user: {
+          id: req.user.id,
+          username: req.user.username,
+          youtubeConnected: !!req.user.youtubeToken,
+          youtubeChannelId: req.user.youtubeChannelId,
+          youtubeAccount: youtubeAccount,
+        },
+      });
+    } catch (error) {
+      console.error("Auth status error:", error);
+      res.status(500).json({ error: "Failed to get auth status" });
+    }
   });
 
   app.get("/api/auth/youtube", requireAuth, (req: AuthRequest, res) => {
