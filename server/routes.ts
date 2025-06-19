@@ -384,9 +384,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         youtube: {
-          status: (req.user.youtubeToken && process.env.YOUTUBE_API_KEY) ? "connected" : "disconnected",
+          status: process.env.YOUTUBE_API_KEY ? (req.user.youtubeToken ? "connected" : "ready") : "disconnected",
           quotaUsed: quota?.youtubeQuotaUsed || 0,
-          quotaPercentage: Math.round(((quota?.youtubeQuotaUsed || 0) / 10000) * 100)
+          quotaPercentage: Math.round(((quota?.youtubeQuotaUsed || 0) / 10000) * 100),
+          apiKeyConfigured: !!process.env.YOUTUBE_API_KEY,
+          userAuthenticated: !!req.user.youtubeToken
         },
         gemini: {
           status: geminiStatus ? "connected" : "disconnected",
