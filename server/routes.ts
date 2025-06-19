@@ -238,6 +238,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get individual channel
+  app.get("/api/channels/:id", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const channel = await storage.getChannel(channelId);
+      
+      if (!channel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+      
+      res.json(channel);
+    } catch (error) {
+      console.error("Get channel error:", error);
+      res.status(500).json({ error: "Failed to fetch channel" });
+    }
+  });
+
   app.delete("/api/channels/:id", requireAuth, async (req: AuthRequest, res) => {
     try {
       const channelId = parseInt(req.params.id);

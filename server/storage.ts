@@ -4,6 +4,8 @@ import {
   type Video, type InsertVideo, type AutomationSettings, type InsertAutomationSettings,
   type ActivityLog, type InsertActivityLog, type ApiQuota
 } from "@shared/schema";
+import { videoQueue } from "@shared/video-queue";
+import { processingLogs } from "@shared/processing-logs";
 import { db } from "./db";
 import { eq, desc, and, or, sql } from "drizzle-orm";
 
@@ -153,8 +155,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteChannel(id: number): Promise<void> {
-    // Delete all videos for this channel first
+    // Delete all related data for this channel
     await db.delete(videos).where(eq(videos.channelId, id));
+    await db.delete(videoQueue).where(eq(videoQueue.channelId, id));
+    await db.delete(processingLogs).where(eq(processingLogs.channelId, id));
     // Delete the channel
     await db.delete(channels).where(eq(channels.id, id));
   }

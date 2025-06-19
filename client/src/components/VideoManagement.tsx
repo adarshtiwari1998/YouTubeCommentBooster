@@ -94,6 +94,31 @@ export default function VideoManagement({ channelId, channelName }: VideoManagem
 
   return (
     <div className="space-y-6">
+      {/* Process Explanation */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="text-blue-800 flex items-center">
+            <Play className="h-5 w-5 mr-2" />
+            What does "Process" do?
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-blue-700">
+          <div className="space-y-2 text-sm">
+            <p><strong>Step 1:</strong> Fetches latest videos from YouTube channel</p>
+            <p><strong>Step 2:</strong> Filters videos based on automation criteria</p>
+            <p><strong>Step 3:</strong> Adds eligible videos to processing queue</p>
+            <p><strong>Step 4:</strong> Generates AI comments using Gemini AI</p>
+            <p><strong>Step 5:</strong> Posts comments and likes automatically (if automation is enabled)</p>
+          </div>
+          <div className="mt-3 p-3 bg-white rounded border border-blue-200">
+            <p className="text-xs text-blue-600">
+              <strong>Note:</strong> Processing will check each video to see if you've already commented or liked it, 
+              and will skip videos where you've already engaged.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Channel Status Overview */}
       <Card>
         <CardHeader>
