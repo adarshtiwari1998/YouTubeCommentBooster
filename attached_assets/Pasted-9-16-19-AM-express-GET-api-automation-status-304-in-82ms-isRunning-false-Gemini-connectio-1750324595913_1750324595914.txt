@@ -1,0 +1,51 @@
+9:16:19 AM [express] GET /api/automation/status 304 in 82ms :: {"isRunning":false}
+Gemini connection test failed: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent: [400 Bad Request] API key not valid. Please pass a valid API key. [{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key not valid. Please pass a valid API key."}]
+    at handleResponseNotOk (file:///home/runner/workspace/node_modules/@google/generative-ai/dist/index.mjs:432:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///home/runner/workspace/node_modules/@google/generative-ai/dist/index.mjs:401:9)
+    at async generateContent (file:///home/runner/workspace/node_modules/@google/generative-ai/dist/index.mjs:865:22)
+    at async GeminiService.testConnection (/home/runner/workspace/server/services/geminiService.ts:59:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:403:28) {
+  status: 400,
+  statusText: 'Bad Request',
+  errorDetails: [
+    {
+      '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+      reason: 'API_KEY_INVALID',
+      domain: 'googleapis.com',
+      metadata: [Object]
+    },
+    {
+      '@type': 'type.googleapis.com/google.rpc.LocalizedMessage',
+      locale: 'en-US',
+      message: 'API key not valid. Please pass a valid API key.'
+    }
+  ]
+}
+9:16:19 AM [express] GET /api/system/status 304 in 355ms :: {"youtube":{"status":"disconnected","quo…
+9:16:19 AM [express] GET /api/automation/settings 304 in 170ms :: {"id":1,"isActive":false,"delayMin…
+9:16:24 AM [express] GET /api/automation/status 304 in 83ms :: {"isRunning":false}
+9:16:25 AM [express] GET /api/automation/settings 304 in 165ms :: {"id":1,"isActive":false,"delayMin…
+Gemini connection test failed: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent: [400 Bad Request] API key not valid. Please pass a valid API key. [{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key not valid. Please pass a valid API key."}]
+    at handleResponseNotOk (file:///home/runner/workspace/node_modules/@google/generative-ai/dist/index.mjs:432:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///home/runner/workspace/node_modules/@google/generative-ai/dist/index.mjs:401:9)
+    at async generateContent (file:///home/runner/workspace/node_modules/@google/generative-ai/dist/index.mjs:865:22)
+    at async GeminiService.testConnection (/home/runner/workspace/server/services/geminiService.ts:59:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:403:28) {
+  status: 400,
+  statusText: 'Bad Request',
+  errorDetails: [
+    {
+      '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+      reason: 'API_KEY_INVALID',
+      domain: 'googleapis.com',
+      metadata: [Object]
+    },
+    {
+      '@type': 'type.googleapis.com/google.rpc.LocalizedMessage',
+      locale: 'en-US',
+      message: 'API key not valid. Please pass a valid API key.'
+    }
+  ]
+}
