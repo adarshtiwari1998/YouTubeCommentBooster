@@ -53,6 +53,21 @@ export interface IStorage {
     commentsToday: number;
     successRate: number;
   }>;
+
+  // Video processing methods
+  updateChannel(id: number, updates: Partial<Channel>): Promise<void>;
+  updateVideoEngagement(videoId: string, updates: any): Promise<void>;
+  updateVideoProcessingStage(videoId: string, stage: string): Promise<void>;
+  getVideosNeedingAction(channelId?: number): Promise<Video[]>;
+  addToVideoQueue(item: any): Promise<void>;
+  getPendingQueueItems(channelId?: number): Promise<any[]>;
+  updateQueueItemStatus(id: number, status: string, errorMessage?: string): Promise<void>;
+  incrementQueueItemAttempts(id: number): Promise<void>;
+  getCompletedVideosCount(channelId: number): Promise<number>;
+  getActiveChannels(): Promise<Channel[]>;
+  getLatestVideoForChannel(channelId: number): Promise<Video | undefined>;
+  createProcessingLog(log: any): Promise<void>;
+  getProcessingLogs(channelId?: number, limit?: number): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {

@@ -428,6 +428,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New video processing endpoints
+  app.post("/api/channels/:id/process", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const isAuthenticated = !!req.user.youtubeToken;
+      
+      if (req.user.youtubeToken) {
+        youtubeService.setCredentials(req.user.youtubeToken, req.user.youtubeRefreshToken);
+      }
+      
+      videoProcessingService.startChannelProcessing(channelId, isAuthenticated);
+      
+      res.json({ 
+        success: true, 
+        message: isAuthenticated ? "Processing started" : "Video fetching started (authentication required for full processing)"
+      });
+    } catch (error) {
+      console.error("Channel processing error:", error);
+      res.status(500).json({ error: "Failed to start channel processing" });
+    }
+  });
+
+  app.get("/api/channels/:id/status", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const status = await videoProcessingService.getChannelProcessingStatus(channelId);
+      res.json(status);
+    } catch (error) {
+      console.error("Channel status error:", error);
+      res.status(500).json({ error: "Failed to get channel status" });
+    }
+  });
+
+  app.get("/api/channels/:id/videos", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const videos = await storage.getVideosByChannelId(channelId);
+      res.json(videos);
+    } catch (error) {
+      console.error("Get videos error:", error);
+      res.status(500).json({ error: "Failed to get videos" });
+    }
+  });
+
+  app.get("/api/processing/logs", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const channelId = req.query.channelId ? parseInt(req.query.channelId as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const logs = await storage.getProcessingLogs(channelId, limit);
+      res.json(logs);
+    } catch (error) {
+      console.error("Get logs error:", error);
+      res.status(500).json({ error: "Failed to get processing logs" });
+    }
+  });
+
+  app.get("/api/videos/queue", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const channelId = req.query.channelId ? parseInt(req.query.channelId as string) : undefined;
+      const queue = await storage.getPendingQueueItems(channelId);
+      res.json(queue);
+    } catch (error) {
+      console.error("Get queue error:", error);
+      res.status(500).json({ error: "Failed to get video queue" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

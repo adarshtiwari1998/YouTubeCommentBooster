@@ -3,11 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Video, MessageSquare, ThumbsUp, ExternalLink, Play, RotateCcw } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Play, Pause, RefreshCw, MessageCircle, ThumbsUp, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ProcessingTimeline from "./ProcessingTimeline";
 
 interface VideoManagementProps {
   channelId: number;
@@ -15,104 +17,75 @@ interface VideoManagementProps {
 }
 
 export default function VideoManagement({ channelId, channelName }: VideoManagementProps) {
-  const [activeTab, setActiveTab] = useState("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: videos, isLoading } = useQuery({
+  const { data: channelStatus, isLoading: statusLoading } = useQuery({
+    queryKey: ["/api/channels", channelId, "status"],
+    refetchInterval: 5000,
+  });
+
+  const { data: videos, isLoading: videosLoading } = useQuery({
     queryKey: ["/api/channels", channelId, "videos"],
-    enabled: !!channelId,
   });
 
-  const { data: analysisData, isLoading: isAnalyzing } = useQuery({
-    queryKey: ["/api/channels", channelId, "analyze"],
-    enabled: false,
+  const { data: queue } = useQuery({
+    queryKey: ["/api/videos/queue"],
+    queryParams: { channelId },
+    refetchInterval: 5000,
   });
 
-  const analyzeMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/channels/${channelId}/analyze`),
-    onSuccess: (data) => {
-      queryClient.setQueryData(["/api/channels", channelId, "analyze"], data);
-      toast({
-        title: "Analysis Complete",
-        description: `Found ${data.videosNeedingAction} videos that need your attention.`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Analysis Failed",
-        description: error.message || "Failed to analyze channel videos",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const syncMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/channels/${channelId}/sync`),
+  const startProcessing = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/channels/${channelId}/process`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/channels", channelId, "videos"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/channels", channelId] });
       toast({
-        title: "Sync Complete",
-        description: "Channel videos have been synchronized successfully.",
+        title: "Processing Started",
+        description: "Channel video processing has been initiated.",
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Sync Failed",
-        description: error.message || "Failed to sync channel videos",
+        title: "Processing Failed",
+        description: error.message || "Failed to start processing",
         variant: "destructive",
       });
     },
   });
 
-  const getStatusBadge = (video: any) => {
-    if (video.userHasCommented && video.userHasLiked) {
-      return <Badge variant="default" className="bg-success text-white">Complete</Badge>;
+  const getStageColor = (stage: string) => {
+    switch (stage) {
+      case 'fetched': return 'bg-blue-500';
+      case 'filtered': return 'bg-yellow-500';
+      case 'queued': return 'bg-orange-500';
+      case 'processing': return 'bg-purple-500';
+      case 'completed': return 'bg-green-500';
+      default: return 'bg-gray-500';
     }
-    if (video.userHasCommented && !video.userHasLiked) {
-      return <Badge variant="secondary">Needs Like</Badge>;
-    }
-    if (!video.userHasCommented && video.userHasLiked) {
-      return <Badge variant="secondary">Needs Comment</Badge>;
-    }
-    return <Badge variant="outline">Pending</Badge>;
   };
 
-  const filteredVideos = videos?.filter((video: any) => {
-    switch (activeTab) {
-      case "needsComment":
-        return !video.userHasCommented;
-      case "needsLike":
-        return !video.userHasLiked;
-      case "completed":
-        return video.userHasCommented && video.userHasLiked;
-      default:
-        return true;
-    }
-  }) || [];
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      pending: 'outline',
+      fetching: 'secondary',
+      fetched: 'default',
+      filtering: 'secondary',
+      filtered: 'default',
+      processing: 'secondary',
+      completed: 'default',
+      error: 'destructive',
+    };
+    return variants[status] || 'outline';
+  };
 
-  if (isLoading) {
+  if (statusLoading) {
     return (
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-10 w-32" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-4 p-4 border rounded-lg">
-                <Skeleton className="w-24 h-16 rounded" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-                <Skeleton className="h-6 w-20" />
-              </div>
-            ))}
+        <CardContent className="p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-20 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
           </div>
         </CardContent>
       </Card>
@@ -120,147 +93,216 @@ export default function VideoManagement({ channelId, channelName }: VideoManagem
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-medium text-foreground">
-            {channelName} - Video Management
+    <div className="space-y-6">
+      {/* Channel Status Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>{channelName} - Processing Status</span>
+            <div className="flex items-center space-x-2">
+              <Badge variant={getStatusBadge(channelStatus?.channel?.status)}>
+                {channelStatus?.channel?.status || 'pending'}
+              </Badge>
+              {channelStatus?.isProcessing && (
+                <Badge variant="secondary" className="animate-pulse">
+                  Processing...
+                </Badge>
+              )}
+            </div>
           </CardTitle>
-          <div className="flex space-x-2">
-            <Button
-              onClick={() => analyzeMutation.mutate()}
-              disabled={analyzeMutation.isPending}
-              variant="outline"
-              size="sm"
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              {analyzeMutation.isPending ? "Analyzing..." : "Analyze"}
-            </Button>
-            <Button
-              onClick={() => syncMutation.mutate()}
-              disabled={syncMutation.isPending}
-              className="bg-material-blue hover:bg-material-blue-dark text-white"
-              size="sm"
-            >
-              <Video className="h-4 w-4 mr-2" />
-              {syncMutation.isPending ? "Syncing..." : "Sync Videos"}
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {analysisData && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-muted rounded-lg">
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{analysisData.totalVideos}</p>
+              <p className="text-2xl font-bold text-blue-600">{channelStatus?.stats?.totalVideos || 0}</p>
               <p className="text-sm text-muted-foreground">Total Videos</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-warning">{analysisData.videosNeedingAction}</p>
-              <p className="text-sm text-muted-foreground">Need Action</p>
+              <p className="text-2xl font-bold text-green-600">{channelStatus?.stats?.fetchedVideos || 0}</p>
+              <p className="text-sm text-muted-foreground">Fetched</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-material-blue">{analysisData.videosNeedingComment}</p>
-              <p className="text-sm text-muted-foreground">Need Comment</p>
+              <p className="text-2xl font-bold text-yellow-600">{channelStatus?.stats?.filteredVideos || 0}</p>
+              <p className="text-sm text-muted-foreground">Filtered</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-success">{analysisData.videosNeedingLike}</p>
-              <p className="text-sm text-muted-foreground">Need Like</p>
+              <p className="text-2xl font-bold text-purple-600">{channelStatus?.stats?.completedVideos || 0}</p>
+              <p className="text-sm text-muted-foreground">Completed</p>
             </div>
           </div>
-        )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="all">All Videos</TabsTrigger>
-            <TabsTrigger value="needsComment">Need Comment</TabsTrigger>
-            <TabsTrigger value="needsLike">Need Like</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-          </TabsList>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="text-center">
+              <p className="text-lg font-semibold text-green-600">{channelStatus?.stats?.commented || 0}</p>
+              <p className="text-sm text-muted-foreground flex items-center justify-center">
+                <MessageCircle className="h-4 w-4 mr-1" />
+                Commented
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-blue-600">{channelStatus?.stats?.liked || 0}</p>
+              <p className="text-sm text-muted-foreground flex items-center justify-center">
+                <ThumbsUp className="h-4 w-4 mr-1" />
+                Liked
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-orange-600">{channelStatus?.stats?.commentPending || 0}</p>
+              <p className="text-sm text-muted-foreground">Comments Pending</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-orange-600">{channelStatus?.stats?.likePending || 0}</p>
+              <p className="text-sm text-muted-foreground">Likes Pending</p>
+            </div>
+          </div>
 
-          <TabsContent value={activeTab} className="mt-4">
-            {filteredVideos.length === 0 ? (
-              <div className="text-center py-8">
-                <Video className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">No Videos Found</h3>
-                <p className="text-muted-foreground">
-                  {activeTab === "all" 
-                    ? "No videos available. Try syncing the channel first."
-                    : `No videos found in the ${activeTab.replace(/([A-Z])/g, ' $1').toLowerCase()} category.`
-                  }
-                </p>
+          <div className="flex items-center justify-between">
+            <div className="flex-1 mr-4">
+              <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                <span>Progress</span>
+                <span>
+                  {channelStatus?.stats?.totalVideos > 0 ? 
+                    Math.round((channelStatus?.stats?.completedVideos / channelStatus?.stats?.totalVideos) * 100) : 0}%
+                </span>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredVideos.map((video: any) => (
-                  <div key={video.videoId} className="flex items-center space-x-4 p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors">
-                    {/* Video Thumbnail */}
-                    <div className="relative w-24 h-16 bg-muted rounded overflow-hidden flex-shrink-0">
-                      {video.thumbnailUrl ? (
-                        <img 
-                          src={video.thumbnailUrl} 
-                          alt={video.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Play className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
+              <Progress 
+                value={channelStatus?.stats?.totalVideos > 0 ? 
+                  (channelStatus?.stats?.completedVideos / channelStatus?.stats?.totalVideos) * 100 : 0} 
+                className="h-3"
+              />
+            </div>
+            <Button
+              onClick={() => startProcessing.mutate()}
+              disabled={startProcessing.isPending || channelStatus?.isProcessing}
+              className="ml-4"
+            >
+              {startProcessing.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4 mr-2" />
+              )}
+              {channelStatus?.isProcessing ? "Processing..." : "Start Processing"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-                    {/* Video Info */}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-foreground truncate" title={video.title}>
-                        {video.title}
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        Published: {new Date(video.publishedAt).toLocaleDateString()}
-                      </p>
-                      <div className="flex items-center space-x-4 mt-1">
-                        {video.viewCount && (
-                          <span className="text-xs text-muted-foreground">
-                            {parseInt(video.viewCount).toLocaleString()} views
-                          </span>
-                        )}
-                        {video.duration && (
-                          <span className="text-xs text-muted-foreground">
-                            Duration: {video.duration}
-                          </span>
-                        )}
+      {/* Tabs for different views */}
+      <Tabs defaultValue="timeline" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="timeline">Processing Timeline</TabsTrigger>
+          <TabsTrigger value="videos">Video List</TabsTrigger>
+          <TabsTrigger value="queue">Processing Queue</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="timeline">
+          <ProcessingTimeline channelId={channelId} />
+        </TabsContent>
+
+        <TabsContent value="videos">
+          <Card>
+            <CardHeader>
+              <CardTitle>Videos ({videos?.length || 0})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-96">
+                {videosLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-16 bg-gray-200 rounded"></div>
                       </div>
-                    </div>
-
-                    {/* Engagement Status */}
-                    <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        <div className={`p-1 rounded ${video.userHasCommented ? 'bg-success text-white' : 'bg-muted'}`}>
-                          <MessageSquare className="h-3 w-3" />
-                        </div>
-                        <div className={`p-1 rounded ${video.userHasLiked ? 'bg-success text-white' : 'bg-muted'}`}>
-                          <ThumbsUp className="h-3 w-3" />
-                        </div>
-                      </div>
-                      {getStatusBadge(video)}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex space-x-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => window.open(`https://youtube.com/watch?v=${video.videoId}`, '_blank')}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+                ) : videos?.length > 0 ? (
+                  <div className="space-y-3">
+                    {videos.map((video: any) => (
+                      <div key={video.id} className="flex items-center justify-between p-3 border rounded">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-sm">{video.title}</h3>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${getStageColor(video.processingStage)} text-white`}
+                            >
+                              {video.processingStage}
+                            </Badge>
+                            {video.hasCommented && (
+                              <Badge variant="outline" className="text-xs">
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                Commented
+                              </Badge>
+                            )}
+                            {video.hasLiked && (
+                              <Badge variant="outline" className="text-xs">
+                                <ThumbsUp className="h-3 w-3 mr-1" />
+                                Liked
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(video.publishedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No videos found</p>
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="queue">
+          <Card>
+            <CardHeader>
+              <CardTitle>Processing Queue ({queue?.length || 0})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-96">
+                {queue?.length > 0 ? (
+                  <div className="space-y-3">
+                    {queue.map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 border rounded">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 rounded-full bg-gray-100">
+                            {item.action === 'comment' ? (
+                              <MessageCircle className="h-4 w-4" />
+                            ) : (
+                              <ThumbsUp className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{item.action}</p>
+                            <p className="text-xs text-muted-foreground">Video: {item.video_id}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={item.status === 'pending' ? 'outline' : 'default'}>
+                            {item.status}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(item.scheduled_at).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No items in queue</p>
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
